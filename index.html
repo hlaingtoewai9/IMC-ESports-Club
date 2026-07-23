@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMC Esports MLBB</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0c10; color: #e2e8f0; overflow: hidden; }
+        
+        .page-section { display: none; }
+        .page-section.active { display: block; animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0c10; }
+        ::-webkit-scrollbar-thumb { background: #1f232b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2a2f3a; }
+
+        .podium-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .podium-card { background: #14171d; padding: 20px; border-radius: 12px; border: 1px solid #1f232b; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s;}
+        .podium-card:hover { border-color: #374151; box-shadow: 0 8px 24px rgba(0,0,0,0.4); transform: translateY(-2px);}
+        
+        .custom-table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; margin-top: 10px; }
+        .custom-table th { color: #717686; padding: 16px 15px; text-align: left; font-size: 11px; text-transform: capitalize; font-weight: 500; border-bottom: 1px solid #1f232b;}
+        .custom-table td { padding: 16px 15px; color: #c5c6c7; font-size: 13px; border-bottom: 1px solid #171a21; transition: all 0.2s ease; white-space: nowrap;}
+        
+        .custom-table th:nth-child(1), .custom-table td:nth-child(1) { width: 80px; }
+        .custom-table th:nth-child(2), .custom-table td:nth-child(2) { width: 220px; }
+        .custom-table th:nth-child(3), .custom-table td:nth-child(3) { width: 150px; }
+        .custom-table th:nth-child(4), .custom-table td:nth-child(4) { width: 150px; }
+        .custom-table th:nth-child(5), .custom-table td:nth-child(5) { width: 120px; }
+        .custom-table th:nth-child(6), .custom-table td:nth-child(6) { width: 150px; }
+
+        .custom-table tr { cursor: pointer; user-select: none; }
+        .custom-table tbody tr:hover { transform: scale(1.015) translateY(-2px); background-color: #1a1d27; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); position: relative; z-index: 50; outline: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px;}
+        .custom-table tbody tr:hover td { border-bottom-color: transparent; }
+        .custom-table tbody tr:hover td:first-child { border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        .custom-table tbody tr:hover td:last-child { border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+
+        .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: #717686; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s; margin-bottom: 4px;}
+        .sidebar-btn:hover { background: rgba(255,255,255,0.03); color: #fff; }
+        .sidebar-btn.active { background: #1f232b; color: #fff; }
+
+        .hero-banner { background: linear-gradient(90deg, #14171d 30%, transparent 100%), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80') center/cover; border: 1px solid #1f232b; }
+
+        .auth-input { width: 100%; background: #0b0c10; color: #fff; padding: 12px 16px; border: 1px solid #1f232b; margin-bottom: 16px; font-size: 14px; outline: none; transition: 0.2s; border-radius: 8px;}
+        .auth-input:focus { border-color: #ff6b35; box-shadow: 0 0 0 1px #ff6b35; }
+        .auth-btn { width: 100%; background: #ff6b35; color: white; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; transition: 0.2s; cursor: pointer;}
+        .auth-btn:hover { background: #e85a25; }
+        
+        .auth-link { color: #717686; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .auth-link:hover { color: #fff; }
+
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: visibility 0s, opacity 0.3s linear; opacity: 0; }
+        #toast.show { visibility: visible; opacity: 1; }
+        #toast.error { background-color: #ef4444; }
+        #toast.success { background-color: #10b981; }
+
+        .hidden-view { display: none !important; }
+        
+        /* Mobile Overrides */
+        @media (max-width: 768px) {
+            .podium-container { grid-template-columns: 1fr !important; }
+            .custom-table { display: block; overflow-x: auto; white-space: nowrap; }
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .hero-banner { flex-direction: column; text-align: center; justify-content: center; gap: 1rem; }
+            .hero-banner img { margin: 0 auto; }
+            aside { position: fixed; z-index: 100; transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
+            aside.mobile-open { transform: translateX(0); box-shadow: 10px 0 30px rgba(0,0,0,0.8); }
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen w-full relative">
+    <div id="toast"></div>
+
+    <!-- AUTHENTICATION SCREEN -->
+    <div id="auth-screen" class="absolute inset-0 z-50 flex items-center justify-center bg-[#0b0c10] bg-opacity-95 backdrop-blur-sm">
+        <div class="bg-[#14171d] p-8 mx-4 rounded-2xl border border-[#1f232b] w-full max-w-md shadow-2xl relative overflow-hidden">
+            <div class="absolute top-[-50px] right-[-50px] w-32 h-32 bg-[#ff6b35] blur-[80px] opacity-20 rounded-full"></div>
+            
+            <div class="text-center mb-8 relative z-10">
+                <img src="https://placehold.co/60x60/ff6b35/fff?text=IF" class="w-14 h-14 rounded-full mx-auto mb-4 border-2 border-[#ff6b35] shadow-[0_0_15px_rgba(255,107,53,0.3)]">
+                <h2 class="text-2xl font-bold text-white tracking-wide">Inside the fire</h2>
+                <p id="auth-subtitle" class="text-[#717686] text-sm mt-1">Sign in to access the dashboard</p>
+            </div>
+
+            <form id="view-login" class="relative z-10" onsubmit="event.preventDefault(); submitLogin();">
+                <input type="text" id="login-username" class="auth-input" placeholder="Username" required>
+                <input type="password" id="login-password" class="auth-input" placeholder="Password" required>
+                <button type="submit" class="auth-btn mb-4">Sign In</button>
+                <div class="text-center text-xs text-[#717686]">
+                    Don't have an account? <span class="auth-link text-[#ff6b35] font-medium" onclick="switchAuthView('register')">Create one</span>
+                </div>
+            </form>
+
+            <form id="view-register" class="hidden-view relative z-10" onsubmit="event.preventDefault(); submitRegister();">
+                <input type="text" id="reg-username" class="auth-input" placeholder="Username" required>
+                <input type="email" id="reg-email" class="auth-input" placeholder="Email (@gmail.com)" required>
+                <input type="password" id="reg-password" class="auth-input" placeholder="Password" required>
+                <button type="submit" class="auth-btn mb-4">Create Account</button>
+                <div class="text-center text-xs text-[#717686]">
+                    Already have an account? <span class="auth-link text-white" onclick="switchAuthView('login')">Sign In</span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD SCREEN -->
+    <div id="dashboard-screen" class="flex flex-col md:flex-row h-screen w-full hidden-view relative">
+        
+        <!-- SIDEBAR -->
+        <aside id="main-sidebar" class="w-[260px] bg-[#0f1115] border-r border-[#1f232b] flex flex-col h-full shrink-0 absolute md:relative">
+            
+            <a href="/profile" class="p-6 flex items-center gap-4 border-b border-[#1f232b] hover:bg-[#1a1d27] transition cursor-pointer w-full" style="text-decoration: none;">
+                <img id="profile-avatar" src="https://placehold.co/40x40/2a2f3a/fff?text=U" class="w-10 h-10 rounded-full object-cover border border-[#2a2f3a]" alt="User">
+                <div class="overflow-hidden">
+                    <div id="profile-name" class="text-sm font-semibold text-white truncate w-full">Loading...</div>
+                    <div id="profile-role" class="text-xs text-[#ff6b35] font-medium capitalize">User</div>
+                </div>
+            </a>
+
+            <div class="px-5 py-4">
+                <div class="bg-[#14171d] border border-[#1f232b] rounded-md flex items-center px-3 py-2">
+                    <svg class="w-4 h-4 text-[#717686] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" placeholder="Search" class="bg-transparent border-none text-sm text-white w-full focus:outline-none placeholder-[#717686]">
+                    <span class="text-[#717686] text-xs font-mono ml-2 border border-[#1f232b] rounded px-1">⌘K</span>
+                </div>
+            </div>
+
+            <div class="px-3 flex-1 overflow-y-auto">
+                <div class="sidebar-btn active" onclick="switchPage('players', this); closeMobileMenu();">
+                    <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                    Players Dashboard
+                </div>
+                
+                <div class="sidebar-btn" onclick="switchPage('teams', this); closeMobileMenu();">
+                    <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    Clubs & Teams
+                </div>
+
+                <a href="/scrims" class="sidebar-btn" style="text-decoration: none; display: flex;">
+                    <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    Upcoming Scrims
+                </a>
+                
+                <a href="/checkin" class="sidebar-btn" style="text-decoration: none; display: flex;">
+                    <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Scrim Check-In
+                </a>
+            </div>
+
+            <div class="p-4 border-t border-[#1f232b]">
+                <div class="sidebar-btn" id="nav-organizer" onclick="switchPage('organizer', this); closeMobileMenu();" style="display: none;">
+                    <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Data Center
+                </div>
+                <div class="sidebar-btn" id="nav-roles" onclick="switchPage('roles', this); closeMobileMenu();" style="display: none;">
+                    <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                    Role Management
+                </div>
+                <div class="sidebar-btn text-[#ef4444] hover:bg-[#ef4444]/10 hover:text-[#ef4444] mt-1" onclick="submitLogout()">
+                    <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                    Sign Out
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full overflow-y-auto bg-[#0b0c10] relative w-full">
+            <div class="w-full h-14 border-b border-[#1f232b] flex items-center justify-between px-4 md:px-8 bg-[#0b0c10]/80 backdrop-blur sticky top-0 z-40">
+                <div class="flex items-center gap-3">
+                    <button onclick="document.getElementById('main-sidebar').classList.toggle('mobile-open')" class="md:hidden text-[#717686] hover:text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                    <div class="text-[#717686] text-sm hidden md:block">Overview</div>
+                </div>
+                <div class="text-[#717686] text-xs flex gap-2">Leaderboard resets in: <span id="leaderboard-countdown" class="text-white font-mono">Loading...</span></div>
+            </div>
+
+            <!-- Hero Banner -->
+            <div class="hero-banner rounded-2xl p-8 mb-8 mx-4 md:mx-8 mt-4 md:mt-8 flex items-center justify-between relative overflow-hidden">
+                <div class="flex items-center gap-6 relative z-10 flex-col md:flex-row text-center md:text-left">
+                    <div class="relative">
+                        <!-- Blue glow behind the logo -->
+                        <div class="absolute inset-0 bg-[#2563eb] blur-md opacity-50 rounded-full"></div>
+                        <img src="/logo.png" class="w-20 h-20 rounded-full relative z-10 border-2 border-[#2563eb] shadow-lg object-cover bg-black">
+                    </div>
+                    <div>
+                        <!-- Updated title -->
+                        <h1 class="text-3xl font-bold text-white tracking-wide">IMC Esports Club</h1>
+                        <p class="text-[#8892b0] text-sm mt-2 max-w-md leading-relaxed">The official IMC Esports Club platform. Join tournaments, track player statistics, and stay updated with the latest esports news</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-4 md:px-8 pb-8">
+                <!-- Leaderboards -->
+                <div id="players" class="page-section active">
+                    <div id="podium-container" class="podium-container"></div>
+                    <div class="bg-[#0b0c10] overflow-hidden">
+                        <table class="custom-table">
+                            <thead></thead>
+                            <tbody id="player-list-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CLUBS & TEAMS VIEW -->
+                <div id="teams" class="page-section">
+                    <div class="bg-[#0b0c10] overflow-hidden rounded-xl border border-[#1f232b]">
+                        <table class="custom-table">
+                            <thead></thead>
+                            <tbody id="team-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- EXACT MATCH DATA FORMS -->
+                <div id="organizer" class="page-section">
+                    <div class="bg-[#14171d] rounded-xl p-4 md:p-8 border border-[#1f232b]">
+                        <h2 class="text-xl text-white font-semibold mb-8 border-b border-[#1f232b] pb-4">Manage Organization Data</h2>
+                        
+                        <div class="grid grid-cols-2 gap-4 md:gap-10 mb-10">
+                            <!-- Add Player Data -->
+                            <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                                <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Add Player (Exact Stats)</h3>
+                                <div class="grid grid-cols-2 gap-3 mb-4">
+                                    <input type="text" id="ap_name" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Player Name (Required)">
+                                    <input type="text" id="ap_team" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Team Name">
+                                    <input type="number" id="ap_matches" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Total Matches">
+                                    <input type="number" id="ap_points" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Total Points">
+                                    <input type="number" id="ap_wins" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Wins">
+                                    <input type="number" id="ap_losses" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Losses">
+                                    <input type="number" id="ap_kills" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Kills">
+                                    <input type="number" id="ap_deaths" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Deaths">
+                                    <input type="number" id="ap_assists" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm col-span-2" placeholder="Assists">
+                                </div>
+                                <button onclick="addPlayer()" class="w-full bg-[#10b981] hover:bg-[#059669] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(16,185,129,0.3)]">Create Player</button>
+                            </div>
+
+                            <!-- Add Team Data -->
+                            <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                                <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Add Team (Exact Stats)</h3>
+                                <div class="grid grid-cols-2 gap-3 mb-4">
+                                    <input type="text" id="at_name" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm col-span-2" placeholder="Team Name (Required)">
+                                    <input type="number" id="at_matches" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Total Matches">
+                                    <input type="number" id="at_points" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Total Points">
+                                    <input type="number" id="at_wins" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Wins">
+                                    <input type="number" id="at_losses" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Losses">
+                                </div>
+                                <button onclick="addTeam()" class="w-full bg-[#10b981] hover:bg-[#059669] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(16,185,129,0.3)] mt-4 md:mt-[105px]">Create Team</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 md:gap-10 mb-10">
+                            <!-- Modify Player -->
+                            <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                                <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Modify Player Stats</h3>
+                                <input type="text" id="mp_target" class="w-full bg-[#14171d] text-white p-2.5 border border-[#ff6b35] rounded-lg text-sm mb-4" placeholder="Target Player Name (Exact)">
+                                <div class="grid grid-cols-2 gap-3 mb-4">
+                                    <input type="text" id="mp_team" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm col-span-2" placeholder="New Team (Leave blank to keep current)">
+                                    <input type="number" id="mp_matches" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Matches">
+                                    <input type="number" id="mp_points" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Points">
+                                    <input type="number" id="mp_wins" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Wins">
+                                    <input type="number" id="mp_losses" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Losses">
+                                    <input type="number" id="mp_kills" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Kills">
+                                    <input type="number" id="mp_deaths" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Deaths">
+                                    <input type="number" id="mp_assists" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm col-span-2" placeholder="Assists">
+                                </div>
+                                <button onclick="modifyPlayer()" class="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(59,130,246,0.3)]">Overwrite Player Data</button>
+                            </div>
+
+                            <!-- Modify Team -->
+                            <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                                <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Modify Team Stats</h3>
+                                <input type="text" id="mt_target" class="w-full bg-[#14171d] text-white p-2.5 border border-[#ff6b35] rounded-lg text-sm mb-4" placeholder="Target Team Name (Exact)">
+                                <div class="grid grid-cols-2 gap-3 mb-4">
+                                    <input type="number" id="mt_matches" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Matches">
+                                    <input type="number" id="mt_points" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Points">
+                                    <input type="number" id="mt_wins" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Wins">
+                                    <input type="number" id="mt_losses" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Losses">
+                                </div>
+                                <button onclick="modifyTeam()" class="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(59,130,246,0.3)] mt-4 md:mt-[105px]">Overwrite Team Data</button>
+                            </div>
+                        </div>
+
+                        <!-- Delete Operations -->
+                        <div class="grid grid-cols-2 gap-4 md:gap-10">
+                            <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                                <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Delete Player Record</h3>
+                                <input type="text" id="del_p_name" class="w-full bg-[#14171d] text-white p-3.5 border border-[#2a2f3a] rounded-lg mb-4 text-sm" placeholder="Enter Exact Player Name">
+                                <button onclick="deletePlayer()" class="w-full bg-[#ef4444] hover:bg-[#dc2626] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(239,68,68,0.3)]">Delete Player</button>
+                            </div>
+                            <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                                <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Delete Team Record</h3>
+                                <input type="text" id="del_t_name" class="w-full bg-[#14171d] text-white p-3.5 border border-[#2a2f3a] rounded-lg mb-4 text-sm" placeholder="Enter Exact Team Name">
+                                <button onclick="deleteTeam()" class="w-full bg-[#ef4444] hover:bg-[#dc2626] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(239,68,68,0.3)]">Delete Team</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ROLE MANAGEMENT SYSTEM -->
+                <div id="roles" class="page-section">
+                    <div class="bg-[#14171d] rounded-xl p-4 md:p-8 border border-[#1f232b]">
+                        <h2 class="text-xl text-white font-semibold mb-8 border-b border-[#1f232b] pb-4">Role & Account Management</h2>
+                        
+                        <div class="bg-[#0b0c10] overflow-hidden rounded-lg border border-[#1f232b]">
+                            <table class="custom-table">
+                                <thead>
+                                    <tr>
+                                        <th style="padding-left: 25px;">Username</th>
+                                        <th>Email</th>
+                                        <th>Access Role</th>
+                                        <th class="text-right pr-6">Administrative Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-body">
+                                    <!-- Populated by Javascript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const apiUrl = window.location.origin;
+        let currentUserRole = 'user'; 
+
+        // ----- MOBILE UTILITIES -----
+        function closeMobileMenu() {
+            document.getElementById('main-sidebar').classList.remove('mobile-open');
+        }
+
+        // ----- COUNTDOWN TIMER LOGIC -----
+        let resetDate;
+        const storedDate = localStorage.getItem('imc_reset_date');
+
+        if (storedDate) {
+            resetDate = new Date(storedDate);
+        } else {
+            resetDate = new Date();
+            resetDate.setMonth(resetDate.getMonth() + 1);
+            localStorage.setItem('imc_reset_date', resetDate.toISOString());
+        }
+
+        function updateLeaderboardCountdown() {
+            const now = new Date();
+            const timeDifference = resetDate - now;
+
+            const countdownElement = document.getElementById('leaderboard-countdown');
+            if (!countdownElement) return;
+
+            if (timeDifference <= 0) {
+                countdownElement.innerText = "00 : 00 : 00 : 00";
+                localStorage.removeItem('imc_reset_date');
+                return; 
+            }
+
+            const days = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeDifference % (1000 * 60)) / 1000);
+
+            const pad = (num) => String(num).padStart(2, '0');
+            countdownElement.innerText = `${pad(days)} : ${pad(hours)} : ${pad(minutes)} : ${pad(seconds)}`;
+        }
+
+        updateLeaderboardCountdown();
+        setInterval(updateLeaderboardCountdown, 1000);
+        // ---------------------------------
+
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "show " + type;
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        function switchPage(id, element) {
+            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if(element) element.classList.add('active');
+        }
+
+        function switchAuthView(view) {
+            document.querySelectorAll('.auth-form').forEach(el => el.classList.add('hidden-view'));
+            
+            document.getElementById('view-login').classList.add('hidden-view');
+            document.getElementById('view-register').classList.add('hidden-view');
+
+            document.getElementById(`view-${view}`).classList.remove('hidden-view');
+        }
+
+        async function checkSession() {
+            try {
+                let res = await fetch(`${apiUrl}/api/session`);
+                let data = await res.json();
+                if (data.logged_in) {
+                    currentUserRole = data.role; 
+                    document.getElementById('auth-screen').classList.add('hidden-view');
+                    document.getElementById('dashboard-screen').classList.remove('hidden-view');
+                    
+                    document.getElementById('profile-name').innerText = data.username || "User"; 
+                    document.getElementById('profile-role').innerText = data.role === 'user' ? 'Standard User' : data.role;
+                    if (data.avatar) {
+                        document.getElementById('profile-avatar').src = `/uploads/${data.avatar}?t=${new Date().getTime()}`;
+                    } else {
+                        document.getElementById('profile-avatar').src = `https://placehold.co/40x40/2a2f3a/fff?text=${(data.username || 'U').charAt(0).toUpperCase()}`;
+                    }
+                    
+                    if (['superuser', 'admin', 'organizer'].includes(data.role)) {
+                        document.getElementById('nav-organizer').style.display = 'flex';
+                    } else { 
+                        document.getElementById('nav-organizer').style.display = 'none'; 
+                    }
+
+                    if (['superuser', 'admin'].includes(data.role)) {
+                        document.getElementById('nav-roles').style.display = 'flex';
+                        loadUsers();
+                    } else {
+                        document.getElementById('nav-roles').style.display = 'none';
+                    }
+
+                    loadLeaderboards();
+                } else {
+                    document.getElementById('auth-screen').classList.remove('hidden-view');
+                    document.getElementById('dashboard-screen').classList.add('hidden-view');
+                    switchAuthView('login');
+                }
+            } catch (e) { console.error("Backend offline"); }
+        }
+
+        async function submitLogin() {
+            const u = document.getElementById('login-username').value;
+            const p = document.getElementById('login-password').value;
+            try {
+                let res = await fetch(`${apiUrl}/api/login`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({username: u, password: p})});
+                let data = await res.json();
+                if(data.status === "success") {
+                    checkSession(); 
+                } else { showToast(data.message, "error"); }
+            } catch(e) { showToast("Connection failed", "error"); }
+        }
+
+        async function submitRegister() {
+            const u = document.getElementById('reg-username').value;
+            const e = document.getElementById('reg-email').value;
+            const p = document.getElementById('reg-password').value;
+            try {
+                let res = await fetch(`${apiUrl}/api/register`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({username: u, email: e, password: p})});
+                let data = await res.json();
+                if(data.status === "success") {
+                    showToast("Account Created! Please Sign In.");
+                    switchAuthView('login');
+                } else { showToast(data.message, "error"); }
+            } catch(e) { showToast("Connection failed", "error"); }
+        }
+
+        async function submitLogout() {
+            try {
+                await fetch(`${apiUrl}/api/logout`, { method: "POST" });
+                checkSession(); 
+            } catch(e) { showToast("Connection failed", "error"); }
+        }
+
+        function getMLBBRankIcon(points) {
+            if (points >= 500) return '✨ Challenger';
+            if (points >= 300) return '🛡️ Grandmaster';
+            if (points >= 150) return '⚔️ Master';
+            return '🔹 Gold';
+        }
+        function getRankColor(points) {
+            if (points >= 500) return '#ffd700';
+            if (points >= 300) return '#ff4c4c';
+            if (points >= 150) return '#b19cd9';
+            return '#cd7f32';
+        }
+
+        async function loadLeaderboards() {
+            let pTable = document.querySelector("#players .custom-table thead");
+            if(pTable) pTable.innerHTML = `<tr><th style="padding-left:25px;">Place</th><th>Player name</th><th>Lokal stats</th><th>Winrate</th><th>KDA</th><th>Rank</th></tr>`;
+            let tTable = document.querySelector("#teams .custom-table thead");
+            if(tTable) tTable.innerHTML = `<tr><th style="padding-left:25px;">Place</th><th>Team name</th><th>Matches</th><th>Winrate</th><th>W - L</th><th>Points</th></tr>`;
+            
+            try {
+                let pRes = await fetch(`${apiUrl}/api/player_leaderboard`); 
+                let pData = await pRes.json();
+                let podium = document.getElementById("podium-container"); 
+                let pList = document.getElementById("player-list-body");
+                podium.innerHTML = ""; pList.innerHTML = "";
+                
+                if (Array.isArray(pData) && pData.length > 0) {
+                    const top3 = [pData[1], pData[0], pData[2]];
+                    top3.forEach((p, i) => {
+                        if(p) {
+                            const r = [2, 1, 3][i];
+                            const initial = p.player_name.charAt(0).toUpperCase();
+                            const rankBadge = getMLBBRankIcon(p.points);
+                            const trophyColor = r === 1 ? 'ffd700' : (r === 2 ? 'e2e8f0' : 'cd7f32');
+                            let winRateStr = p.winrate;
+                            let wrVal = parseFloat(winRateStr)/100;
+                            let wrColor = wrVal >= 0.5 ? '#10b981' : '#6366f1';
+
+                            podium.innerHTML += `
+                            <div class="podium-card relative overflow-hidden">
+                                <div class="flex justify-between items-start">
+                                    <div class="flex items-center gap-3">
+                                        <img src="https://placehold.co/40x40/2a2f3a/fff?text=${initial}" class="rounded-full w-10 h-10 border border-[#2a2f3a]">
+                                        <div>
+                                            <div class="text-[#e2e8f0] font-medium text-sm">${p.player_name}</div>
+                                            <div class="text-[11px] text-[#ffd700] mt-0.5 flex items-center gap-1">${rankBadge}</div>
+                                        </div>
+                                    </div>
+                                    <div class="text-[28px] leading-none" style="color: ${trophyColor}; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">🏆</div>
+                                </div>
+                                
+                                <div class="flex justify-between text-left mt-6 pt-4 border-t border-[#1f232b]">
+                                    <div>
+                                        <div class="text-[10px] text-[#717686] mb-1">Lokal stats</div>
+                                        <div class="text-xs text-[#c5c6c7]">${p.matches_played} - ${p.wins}W</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[10px] text-[#717686] mb-1">Winrate</div>
+                                        <div class="text-xs text-[#c5c6c7]">${winRateStr}</div>
+                                        <div class="w-8 h-[2px] bg-[#2a2f3a] mt-1.5 rounded overflow-hidden"><div style="width:${winRateStr}; background:${wrColor}; height:100%;"></div></div>
+                                    </div>
+                                    <div>
+                                        <div class="text-[10px] text-[#717686] mb-1">KDA</div>
+                                        <div class="text-xs text-[#6366f1]">${p.kda}</div>
+                                        <div class="w-8 h-[2px] bg-[#2a2f3a] mt-1.5 rounded overflow-hidden"><div style="width:70%; background:#6366f1; height:100%;"></div></div>
+                                    </div>
+                                </div>
+                            </div>`;
+                        }
+                    });
+
+                    pData.slice(3).forEach((p, i) => {
+                        const initial = p.player_name.charAt(0).toUpperCase();
+                        const rankText = getMLBBRankIcon(p.points);
+                        const rankColor = getRankColor(p.points);
+                        let wrVal = parseFloat(p.winrate)/100;
+                        let wrColor = wrVal >= 0.5 ? '#10b981' : '#6366f1';
+
+                        pList.innerHTML += `<tr>
+                            <td style="color:#717686; padding-left:25px;">${i+4}</td>
+                            <td class="truncate" style="display: flex; align-items: center; gap: 12px; border-bottom: none;">
+                                <img src="https://placehold.co/24x24/2a2f3a/fff?text=${initial}" class="w-6 h-6 rounded-full border border-[#2a2f3a]">
+                                <span class="text-[#e2e8f0] font-medium">${p.player_name}</span>
+                            </td>
+                            <td class="truncate text-[#c5c6c7]">${p.matches_played} <span class="mx-1 text-[#717686]">-</span> ${p.wins}W</td>
+                            <td>
+                                <div class="text-[#c5c6c7]">${p.winrate}</div>
+                                <div class="w-8 h-[2px] bg-[#2a2f3a] mt-1.5 rounded overflow-hidden">
+                                    <div style="width: ${p.winrate}; height: 100%; background: ${wrColor};"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="text-[#6366f1]">${p.kda}</div>
+                                <div class="w-8 h-[2px] bg-[#2a2f3a] mt-1.5 rounded overflow-hidden">
+                                    <div style="width: 70%; height: 100%; background: #6366f1;"></div>
+                                </div>
+                            </td>
+                            <td class="truncate" style="color: ${rankColor}; font-size: 12px;">${rankText}</td>
+                        </tr>`;
+                    });
+                } else { pList.innerHTML = `<tr><td colspan="6" class="text-center text-[#717686] py-8">No player data available.</td></tr>`; }
+            } catch (e) { console.error("Player data failed to load", e); }
+
+            try {
+                let tRes = await fetch(`${apiUrl}/api/team_leaderboard`); 
+                let tData = await tRes.json();
+                let tList = document.getElementById("team-body");
+                tList.innerHTML = "";
+                
+                if (Array.isArray(tData) && tData.length > 0) {
+                    tData.forEach((t, i) => {
+                        let wrVal = parseFloat(t.winrate)/100;
+                        let wrColor = wrVal >= 0.5 ? '#10b981' : '#6366f1'; 
+                        const initial = t.team_name.charAt(0).toUpperCase();
+                        
+                        tList.innerHTML += `<tr>
+                            <td style="color:#717686; padding-left:25px;">${i+1}</td>
+                            <td class="truncate" style="display: flex; align-items: center; gap: 12px; border-bottom: none;">
+                                <div class="bg-[#1f232b] rounded flex items-center justify-center text-[#ff6b35] text-xs font-bold w-6 h-6 border border-[#2a2f3a]">${initial}</div>
+                                <span class="text-[#e2e8f0] font-medium">${t.team_name}</span>
+                            </td>
+                            <td class="truncate text-[#c5c6c7]">${t.matches_played}</td>
+                            <td>
+                                <div class="text-[#c5c6c7]">${t.winrate}</div>
+                                <div class="w-8 h-[2px] bg-[#2a2f3a] mt-1.5 rounded overflow-hidden">
+                                    <div style="width: ${t.winrate}; height: 100%; background: ${wrColor};"></div>
+                                </div>
+                            </td>
+                            <td class="truncate text-[#c5c6c7]">${t.wins} <span class="text-[#717686] mx-1">-</span> ${t.losses}</td>
+                            <td class="truncate text-[#6366f1] font-medium">${t.points}</td>
+                        </tr>`;
+                    });
+                } else { tList.innerHTML = `<tr><td colspan="6" class="text-center text-[#717686] py-8">No team data available.</td></tr>`; }
+            } catch (e) { console.error("Team data failed to load", e); }
+        }
+
+        async function addPlayer() {
+            const payload = {
+                name: document.getElementById('ap_name').value, team: document.getElementById('ap_team').value,
+                matches: document.getElementById('ap_matches').value, points: document.getElementById('ap_points').value,
+                wins: document.getElementById('ap_wins').value, losses: document.getElementById('ap_losses').value,
+                kills: document.getElementById('ap_kills').value, deaths: document.getElementById('ap_deaths').value,
+                assists: document.getElementById('ap_assists').value
+            };
+            try {
+                let res = await fetch(`${apiUrl}/api/add_player`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+                let result = await res.json();
+                if(result.status === "success") {
+                    showToast(result.message);
+                    ['ap_name','ap_team','ap_matches','ap_points','ap_wins','ap_losses','ap_kills','ap_deaths','ap_assists'].forEach(id => document.getElementById(id).value = '');
+                    loadLeaderboards(); 
+                } else { showToast(result.message, "error"); }
+            } catch(e) { showToast("Error adding record", "error"); }
+        }
+
+        async function addTeam() {
+            const payload = {
+                name: document.getElementById('at_name').value, matches: document.getElementById('at_matches').value,
+                points: document.getElementById('at_points').value, wins: document.getElementById('at_wins').value,
+                losses: document.getElementById('at_losses').value
+            };
+            try {
+                let res = await fetch(`${apiUrl}/api/add_team`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+                let result = await res.json();
+                if(result.status === "success") {
+                    showToast(result.message);
+                    ['at_name','at_matches','at_points','at_wins','at_losses'].forEach(id => document.getElementById(id).value = '');
+                    loadLeaderboards(); 
+                } else { showToast(result.message, "error"); }
+            } catch(e) { showToast("Error adding record", "error"); }
+        }
+
+        async function modifyPlayer() {
+            const payload = {
+                target_name: document.getElementById('mp_target').value, 
+                team: document.getElementById('mp_team').value, 
+                matches: document.getElementById('mp_matches').value, 
+                points: document.getElementById('mp_points').value, 
+                wins: document.getElementById('mp_wins').value, 
+                losses: document.getElementById('mp_losses').value, 
+                kills: document.getElementById('mp_kills').value, 
+                deaths: document.getElementById('mp_deaths').value, 
+                assists: document.getElementById('mp_assists').value
+            };
+            try {
+                let res = await fetch(`${apiUrl}/api/modify_player`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+                let result = await res.json();
+                if(result.status === "success") {
+                    showToast(result.message);
+                    ['mp_target','mp_team','mp_matches','mp_points','mp_wins','mp_losses','mp_kills','mp_deaths','mp_assists'].forEach(id => document.getElementById(id).value = '');
+                    loadLeaderboards(); 
+                } else { showToast(result.message, "error"); }
+            } catch(e) { showToast("Error updating record", "error"); }
+        }
+
+        async function modifyTeam() {
+            const payload = {
+                target_name: document.getElementById('mt_target').value, 
+                matches: document.getElementById('mt_matches').value, 
+                points: document.getElementById('mt_points').value, 
+                wins: document.getElementById('mt_wins').value, 
+                losses: document.getElementById('mt_losses').value
+            };
+            try {
+                let res = await fetch(`${apiUrl}/api/modify_team`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+                let result = await res.json();
+                if(result.status === "success") {
+                    showToast(result.message);
+                    ['mt_target','mt_matches','mt_points','mt_wins','mt_losses'].forEach(id => document.getElementById(id).value = '');
+                    loadLeaderboards(); 
+                } else { showToast(result.message, "error"); }
+            } catch(e) { showToast("Error updating record", "error"); }
+        }
+
+        async function deletePlayer() {
+            try {
+                await fetch(`${apiUrl}/api/delete_player`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({player_name: document.getElementById('del_p_name').value}) });
+                showToast("Player deleted successfully");
+                document.getElementById('del_p_name').value = ''; loadLeaderboards();
+            } catch(e) { showToast("Error deleting player", "error"); }
+        }
+
+        async function deleteTeam() {
+            try {
+                await fetch(`${apiUrl}/api/delete_team`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({team_name: document.getElementById('del_t_name').value}) });
+                showToast("Team deleted successfully");
+                document.getElementById('del_t_name').value = ''; loadLeaderboards();
+            } catch(e) { showToast("Error deleting team", "error"); }
+        }
+
+        async function loadUsers() {
+            try {
+                let res = await fetch(`${apiUrl}/api/users`);
+                if (!res.ok) return;
+                let data = await res.json();
+                let tbody = document.getElementById("users-body");
+                tbody.innerHTML = "";
+                
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-[#717686] py-8">No additional users found.</td></tr>`;
+                    return;
+                }
+
+                data.forEach(u => {
+                    let initial = u.username.charAt(0).toUpperCase();
+                    
+                    let roleOptions = "";
+                    if (currentUserRole === 'superuser') {
+                        roleOptions = `
+                            <option value="user" ${u.role === 'user' ? 'selected' : ''}>Standard User</option>
+                            <option value="player" ${u.role === 'player' ? 'selected' : ''}>Player</option>
+                            <option value="organizer" ${u.role === 'organizer' ? 'selected' : ''}>Data Organizer</option>
+                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                        `;
+                    } else if (currentUserRole === 'admin') {
+                        roleOptions = `
+                            <option value="user" ${u.role === 'user' ? 'selected' : ''}>Standard User</option>
+                            <option value="player" ${u.role === 'player' ? 'selected' : ''}>Player</option>
+                            <option value="organizer" ${u.role === 'organizer' ? 'selected' : ''}>Data Organizer</option>
+                        `;
+                    }
+
+                    let lockActions = false;
+                    if (currentUserRole === 'admin' && (u.role === 'superuser' || u.role === 'admin')) {
+                        lockActions = true;
+                    }
+
+                    tbody.innerHTML += `
+                        <tr style="${lockActions ? 'opacity: 0.5; pointer-events: none;' : ''}">
+                            <td class="truncate" style="padding-left: 25px; display: flex; align-items: center; gap: 12px; border-bottom: none;">
+                                <div class="bg-[#1f232b] rounded-full flex items-center justify-center text-[#e2e8f0] text-xs font-bold w-6 h-6 border border-[#2a2f3a]">${initial}</div>
+                                <span class="text-[#e2e8f0] font-medium">${u.username}</span>
+                            </td>
+                            <td class="text-[#c5c6c7] truncate">${u.email}</td>
+                            <td>
+                                <select onchange="updateUserRole(${u.id}, this.value)" class="bg-[#14171d] text-white p-1.5 border border-[#2a2f3a] rounded text-xs outline-none focus:border-[#ff6b35] cursor-pointer hover:bg-[#1a1d27]">
+                                    ${lockActions ? `<option selected>${u.role.charAt(0).toUpperCase() + u.role.slice(1)} (Locked)</option>` : roleOptions}
+                                </select>
+                            </td>
+                            <td class="text-right pr-6">
+                                <div class="flex justify-end gap-2">
+                                    <button onclick="adminResetPwd(${u.id}, '${u.username}')" class="bg-[#1f232b] hover:bg-[#ff6b35] text-white px-3 py-1.5 rounded text-xs transition border border-[#2a2f3a]">Reset Pass</button>
+                                    <button onclick="deleteAccount(${u.id}, '${u.username}')" class="bg-[#1f232b] hover:bg-[#ef4444] text-[#ef4444] hover:text-white px-3 py-1.5 rounded text-xs transition border border-[#2a2f3a]">Delete</button>
+                                </div>
+                            </td>
+                        </tr>`;
+                });
+            } catch (e) { console.error("Failed to load user accounts.", e); }
+        }
+
+        async function updateUserRole(id, newRole) {
+            try {
+                let res = await fetch(`${apiUrl}/api/update_role`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({id: id, role: newRole}) });
+                let result = await res.json();
+                if(result.status === "success") { showToast("Role dynamically updated."); loadUsers(); }
+                else { showToast(result.message, "error"); loadUsers(); } 
+            } catch(e) { showToast("Error updating role", "error"); }
+        }
+
+        async function adminResetPwd(id, username) {
+            let newPwd = prompt(`SYSTEM OVERRIDE: Enter new password for ${username}:`);
+            if (!newPwd) return; 
+            
+            try {
+                let res = await fetch(`${apiUrl}/api/admin_reset_password`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({id: id, new_password: newPwd}) });
+                let result = await res.json();
+                if(result.status === "success") { showToast(`Password for ${username} reset successfully!`); }
+                else { showToast(result.message, "error"); }
+            } catch(e) { showToast("Error resetting password", "error"); }
+        }
+
+        async function deleteAccount(id, username) {
+            if(!confirm(`WARNING: Are you sure you want to permanently delete the account [ ${username} ]? This cannot be undone.`)) return;
+            
+            try {
+                let res = await fetch(`${apiUrl}/api/delete_user`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({id: id}) });
+                let result = await res.json();
+                if(result.status === "success") { showToast(`Account ${username} purged.`); loadUsers(); }
+                else { showToast(result.message, "error"); }
+            } catch(e) { showToast("Error deleting user", "error"); }
+        }
+
+        checkSession();
+
+        // Bulletproof routing using URL Parameters
+        function handleRouting() {
+            // 1. Look for ?tab= parameter in the URL
+            const urlParams = new URLSearchParams(window.location.search);
+            let targetTab = urlParams.get('tab');
+            
+            // 2. Fallback to check URL hash just in case (/#teams)
+            if (!targetTab && window.location.hash) {
+                targetTab = window.location.hash.substring(1);
+            }
+            
+            // 3. If a valid target is found, switch the page
+            if (targetTab && document.getElementById(targetTab)) {
+                let targetBtn = null;
+                
+                // Safely find the sidebar button that belongs to this tab
+                document.querySelectorAll('.sidebar-btn').forEach(btn => {
+                    const onclickText = btn.getAttribute('onclick') || "";
+                    if (onclickText.includes(`switchPage('${targetTab}'`)) {
+                        targetBtn = btn;
+                    }
+                });
+
+                // Execute the page switch
+                switchPage(targetTab, targetBtn);
+                
+                // Erase the ?tab= parameter from the address bar to keep it clean
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', handleRouting);
+        window.addEventListener('hashchange', handleRouting);
+    </script>
+</body>
+</html>

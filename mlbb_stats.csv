@@ -1,0 +1,6 @@
+RecordType,EntityName,TeamName,Matches,Wins,Losses,Kills,Deaths,Assists,Points
+Player,Faker_Wannabe,T1_Esports,10,7,3,45,12,30,150
+Player,JungleDiff,T1_Esports,10,7,3,60,15,40,200
+Team,T1_Esports,,10,7,3,0,0,0,350
+Team,Blacklist_Intl,,12,9,3,0,0,0,450
+Team,Willam,,10,5,5,0,0,0,10
