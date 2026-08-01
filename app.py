@@ -30,7 +30,9 @@ google = oauth.register(
     client_kwargs={'scope': 'openid email profile'}
 )
 
-CSV_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mlbb_stats.csv')
+# --- FILE PATHS FOR SEPARATE DATABASES ---
+PLAYERS_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'players.csv')
+TEAMS_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'teams.csv')
 
 # --- FILE UPLOAD CONFIGURATION ---
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -41,24 +43,34 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# --- DATA PROCESSING PIPELINE (DIRECT STATS SCHEMA) ---
-def load_clean_df():
-    if not os.path.exists(CSV_FILE) or os.path.getsize(CSV_FILE) == 0:
-        sample_data = """RecordType,EntityName,TeamName,Matches,Wins,Losses,Kills,Deaths,Assists,Points
-Player,Faker_Wannabe,T1_Esports,10,7,3,45,12,30,150
-Player,JungleDiff,T1_Esports,10,7,3,60,15,40,200
-Team,T1_Esports,None,10,7,3,0,0,0,350
-Team,Blacklist_Intl,None,12,9,3,0,0,0,450"""
-        with open(CSV_FILE, 'w') as f:
-            f.write(sample_data)
+# --- DATA PROCESSING PIPELINE ---
+def load_players_df():
+    if not os.path.exists(PLAYERS_CSV) or os.path.getsize(PLAYERS_CSV) == 0:
+        with open(PLAYERS_CSV, 'w') as f:
+            f.write("Name,Batch,IGN,IGN_ID\nJohn Doe,2024,Faker_Wannabe,12345678")
     try:
-        df = pd.read_csv(CSV_FILE)
+        df = pd.read_csv(PLAYERS_CSV)
         df.columns = df.columns.str.strip()
-        for col in ['Matches', 'Wins', 'Losses', 'Kills', 'Deaths', 'Assists', 'Points']:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+        # Ensure IGN_ID is treated as a string to prevent scientific notation
+        if 'IGN_ID' in df.columns:
+            df['IGN_ID'] = df['IGN_ID'].fillna('').astype(str).apply(lambda x: x.replace('.0', '') if x.endswith('.0') else x)
         return df
     except Exception:
-        return None
+        return pd.DataFrame(columns=['Name', 'Batch', 'IGN', 'IGN_ID'])
+
+def load_teams_df():
+    if not os.path.exists(TEAMS_CSV) or os.path.getsize(TEAMS_CSV) == 0:
+        with open(TEAMS_CSV, 'w') as f:
+            f.write("TeamName,Matches,Wins,Losses,Points\nT1_Esports,10,7,3,350\nBlacklist_Intl,12,9,3,450")
+    try:
+        df = pd.read_csv(TEAMS_CSV)
+        df.columns = df.columns.str.strip()
+        for col in ['Matches', 'Wins', 'Losses', 'Points']:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+        return df
+    except Exception:
+        return pd.DataFrame(columns=['TeamName', 'Matches', 'Wins', 'Losses', 'Points'])
 
 # --- DATABASE ENGINE DISPATCH ---
 def init_db():
@@ -96,11 +108,70 @@ def init_attendance_db():
                     role_or_time TEXT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )''')
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS checkin_times (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    time_slot TEXT UNIQUE
+                )''')
+    
+    c.execute("SELECT COUNT(*) FROM checkin_times")
+    if c.fetchone()[0] == 0:
+        default_times = [("18:00 (6:00 PM) Slot",), ("19:00 (7:00 PM) Slot",), ("20:00 (8:00 PM) Slot",)]
+        c.executemany("INSERT INTO checkin_times (time_slot) VALUES (?)", default_times)
+        
+    conn.commit()
+    conn.close()
+
+def init_tourney_db():
+    conn = sqlite3.connect('tournament.db')
+    c = conn.cursor()
+    
+    c.execute('''CREATE TABLE IF NOT EXISTS matches 
+                 (id INTEGER PRIMARY KEY, t1_name TEXT, t1_score INTEGER, t1_logo TEXT,
+                  t2_name TEXT, t2_score INTEGER, t2_logo TEXT)''')
+    c.execute('''CREATE TABLE IF NOT EXISTS groups
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT, group_letter TEXT, rank INTEGER, 
+                  team_name TEXT, w TEXT, l TEXT, pts INTEGER, logo TEXT)''')
+    
+    c.execute("SELECT COUNT(*) FROM matches")
+    match_count = c.fetchone()[0]
+    
+    if match_count < 8:
+        c.execute("DELETE FROM matches")
+        c.execute("DELETE FROM groups")
+        
+        default_matches = [
+            (1, 'Alter Ego', 3, '', 'Natus Vincere', 1, ''),
+            (2, 'EVOS', 3, '', 'Dewa United', 2, ''),
+            (3, 'Bigetron by Vitality', 1, '', 'Alter Ego', 3, ''),
+            (4, 'ONIC', 3, '', 'EVOS', 2, ''),
+            (5, 'Bigetron by Vitality', 0, '', 'EVOS', 3, ''),
+            (6, 'Alter Ego', 2, '', 'ONIC', 3, ''),
+            (7, 'Alter Ego', 4, '', 'EVOS', 2, ''),
+            (8, 'ONIC', 4, '', 'Alter Ego', 1, '')
+        ]
+        c.executemany("INSERT INTO matches VALUES (?,?,?,?,?,?,?)", default_matches)
+        
+        default_groups = [
+            ('A', 1, 'Alter Ego', '4', '0', 12, ''),
+            ('A', 2, 'ONIC', '3', '1', 9, ''),
+            ('A', 3, 'Bigetron by Vitality', '2', '2', 6, ''),
+            ('A', 4, 'Dewa United', '1', '3', 3, ''),
+            ('A', 5, 'Geek Fam', '0', '4', 0, ''),
+            ('B', 1, 'EVOS', '4', '0', 12, ''),
+            ('B', 2, 'Team Liquid PH', '3', '1', 9, ''),
+            ('B', 3, 'Natus Vincere', '2', '2', 6, ''),
+            ('B', 4, 'Aurora Gaming', '1', '3', 3, ''),
+            ('B', 5, 'RRQ Hoshi', '0', '4', 0, '')
+        ]
+        c.executemany("INSERT INTO groups (group_letter, rank, team_name, w, l, pts, logo) VALUES (?,?,?,?,?,?,?)", default_groups)
+        
     conn.commit()
     conn.close()
 
 init_db()
 init_attendance_db()
+init_tourney_db()
 
 # --- UTILITIES ---
 @app.route('/')
@@ -109,8 +180,14 @@ def home(): return send_file('index.html')
 @app.route('/scrims')
 def scrims_page(): return send_file('scrim.html')
 
+@app.route('/localtournament')
+def local_tournament_page(): return send_file('localtournament.html')
+
 @app.route('/checkin')
-def checkin_page(): return send_file('checkin.html')
+def checkin_page(): 
+    if session.get('role') not in ['player', 'superuser', 'admin', 'organizer']:
+        return redirect('/')
+    return send_file('checkin.html')
 
 @app.route('/<path:filename>')
 def serve_static(filename):
@@ -130,9 +207,72 @@ def send_otp_email(receiver_email, otp):
         return (True, "") if res.status_code == 200 else (False, res.text)
     except Exception as e: return False, str(e)
 
+# --- TOURNAMENT DATABASE API ---
+@app.route('/api/tournament', methods=['GET'])
+def get_tournament():
+    conn = sqlite3.connect('tournament.db')
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute("SELECT * FROM matches ORDER BY id")
+    matches = [dict(row) for row in c.fetchall()]
+    c.execute("SELECT * FROM groups ORDER BY group_letter, rank")
+    groups = [dict(row) for row in c.fetchall()]
+    conn.close()
+    return jsonify({"matches": matches, "groups": groups})
+
+@app.route('/api/tournament/match', methods=['POST'])
+def update_match():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
+    data = request.json
+    conn = sqlite3.connect('tournament.db')
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE matches SET t1_name=?, t1_score=?, t1_logo=?, t2_name=?, t2_score=?, t2_logo=? WHERE id=?", 
+                 (data['t1_name'], data['t1_score'], data['t1_logo'], data['t2_name'], data['t2_score'], data['t2_logo'], data['id']))
+        conn.commit()
+        return jsonify({"status": "success", "message": "Bracket updated successfully!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/tournament/group', methods=['POST'])
+def update_group():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
+    data = request.json
+    conn = sqlite3.connect('tournament.db')
+    c = conn.cursor()
+    try:
+        c.execute("UPDATE groups SET team_name=?, w=?, l=?, pts=?, logo=? WHERE id=?", 
+                 (data['team_name'], data['w'], data['l'], data['pts'], data['logo'], data['id']))
+        conn.commit()
+        return jsonify({"status": "success", "message": "Group standing updated successfully!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/api/tournament/upload_logo', methods=['POST'])
+def upload_tourney_logo():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
+    if 'logo' not in request.files: return jsonify({"status": "error", "message": "No image uploaded"})
+    
+    file = request.files['logo']
+    if file.filename == '': return jsonify({"status": "error", "message": "No file selected"})
+    
+    if file:
+        team_name_safe = request.form.get('team_name', 'team').replace(' ', '_').lower()
+        filename = secure_filename(f"tourney_{team_name_safe}_{int(datetime.now().timestamp())}_{file.filename}")
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        
+        return jsonify({"status": "success", "message": "Logo uploaded!", "logo_url": f"/uploads/{filename}"})
+
 # --- SCRIM CHECK-IN & ATTENDANCE SYSTEM ---
 @app.route('/api/checkin', methods=['POST'])
 def handle_checkin():
+    if session.get('role') not in ['player', 'superuser', 'admin', 'organizer']:
+        return jsonify({"status": "error", "message": "Access Denied: Your account must have the Player role to check in."}), 403
+
     data = request.json
     checkin_type = data.get('type')
     entity_name = data.get('name')
@@ -150,6 +290,45 @@ def handle_checkin():
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:
         conn.close()
+
+@app.route('/api/checkin_times', methods=['GET'])
+def get_checkin_times():
+    conn = sqlite3.connect('attendance.db')
+    c = conn.cursor()
+    c.execute("SELECT time_slot FROM checkin_times ORDER BY time_slot")
+    times = [row[0] for row in c.fetchall()]
+    conn.close()
+    return jsonify({"status": "success", "data": times})
+
+@app.route('/api/checkin_times', methods=['POST'])
+def add_checkin_time():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 403
+    
+    time_slot = request.json.get('time_slot', '').strip()
+    if not time_slot: return jsonify({"status": "error", "message": "Time slot cannot be empty"})
+    
+    conn = sqlite3.connect('attendance.db')
+    try:
+        conn.cursor().execute("INSERT INTO checkin_times (time_slot) VALUES (?)", (time_slot,))
+        conn.commit()
+        return jsonify({"status": "success", "message": "Time slot added!"})
+    except sqlite3.IntegrityError:
+        return jsonify({"status": "error", "message": "Time slot already exists!"})
+    finally:
+        conn.close()
+
+@app.route('/api/checkin_times', methods=['DELETE'])
+def delete_checkin_time():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']:
+        return jsonify({"status": "error", "message": "Unauthorized"}), 403
+        
+    time_slot = request.json.get('time_slot', '').strip()
+    conn = sqlite3.connect('attendance.db')
+    conn.cursor().execute("DELETE FROM checkin_times WHERE time_slot = ?", (time_slot,))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "success", "message": "Time slot removed!"})
 
 @app.route('/api/export_teams', methods=['GET'])
 def export_teams():
@@ -222,16 +401,35 @@ def get_scrim_checkins():
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
-    username, email, password = data.get('username', '').strip(), data.get('email', '').strip().lower(), data.get('password')
-    if not email.endswith('@gmail.com'): return jsonify({"status": "error", "message": "You must use a valid @gmail.com address!"})
-    hashed_pw = generate_password_hash(password)
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip().lower()
+    password = data.get('password')
+    
+    if not email.endswith('@gmail.com'): 
+        return jsonify({"status": "error", "message": "You must use a valid @gmail.com address!"})
+    
     conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT id FROM users WHERE username = ?", (username,))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"status": "error", "message": "This username is already taken!"})
+        
+    c.execute("SELECT id FROM users WHERE email = ?", (email,))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"status": "error", "message": "This email is already registered!"})
+
+    hashed_pw = generate_password_hash(password)
     try:
-        conn.cursor().execute("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'user')", (username, email, hashed_pw))
+        c.execute("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'user')", (username, email, hashed_pw))
         conn.commit()
         return jsonify({"status": "success", "message": "Account created!"})
-    except sqlite3.IntegrityError: return jsonify({"status": "error", "message": "Username or Email already exists!"})
-    finally: conn.close()
+    except sqlite3.IntegrityError: 
+        return jsonify({"status": "error", "message": "Database error occurred."})
+    finally: 
+        conn.close()
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -357,156 +555,158 @@ def update_avatar():
 # --- CORE LEADERBOARD SYSTEM ---
 @app.route('/api/player_leaderboard', methods=['GET'])
 def player_leaderboard():
-    df = load_clean_df()
-    if df is None or df.empty: return jsonify([])
+    df = load_players_df()
+    if df.empty: return jsonify([])
     
-    players = df[df['RecordType'] == 'Player'].copy()
-    if players.empty: return jsonify([])
-    
-    def calc_kda(row):
-        denom = row['Deaths'] if row['Deaths'] > 0 else 1
-        val = (row['Kills'] + row['Assists']) / denom
-        return f"{row['Kills']}/{row['Deaths']}/{row['Assists']} ({val:.1f})"
-
-    players['kda'] = players.apply(calc_kda, axis=1)
-    players['winrate'] = players.apply(lambda r: f"{(r['Wins']/r['Matches']*100):.1f}%" if r['Matches'] > 0 else "0%", axis=1)
-    
-    players = players.rename(columns={
-        'EntityName': 'player_name', 'TeamName': 'team_name', 
-        'Matches': 'matches_played', 'Points': 'points',
-        'Wins': 'wins', 'Losses': 'losses', 'Kills': 'kills', 'Deaths': 'deaths', 'Assists': 'assists'
+    for col in ['Name', 'Batch', 'IGN', 'IGN_ID']:
+        if col not in df.columns:
+            df[col] = ""
+            
+    df = df.rename(columns={
+        'Name': 'name', 'Batch': 'batch', 
+        'IGN': 'ign', 'IGN_ID': 'ign_id'
     })
     
-    return players.sort_values(by='points', ascending=False).to_json(orient='records'), 200, {'Content-Type': 'application/json'}
+    return df.sort_values(by='name').to_json(orient='records'), 200, {'Content-Type': 'application/json'}
 
 @app.route('/api/team_leaderboard', methods=['GET'])
 def team_leaderboard():
-    df = load_clean_df()
-    if df is None or df.empty: return jsonify([])
+    df = load_teams_df()
+    if df.empty: return jsonify([])
     
-    teams = df[df['RecordType'] == 'Team'].copy()
-    if teams.empty: return jsonify([])
+    df['winrate'] = df.apply(lambda r: f"{(r['Wins']/r['Matches']*100):.1f}%" if r['Matches'] > 0 else "0%", axis=1)
     
-    teams['winrate'] = teams.apply(lambda r: f"{(r['Wins']/r['Matches']*100):.1f}%" if r['Matches'] > 0 else "0%", axis=1)
-    
-    teams = teams.rename(columns={
-        'EntityName': 'team_name', 'Matches': 'matches_played', 
+    df = df.rename(columns={
+        'TeamName': 'team_name', 'Matches': 'matches_played', 
         'Wins': 'wins', 'Losses': 'losses', 'Points': 'points'
     })
     
-    return teams.sort_values(by='points', ascending=False).to_json(orient='records'), 200, {'Content-Type': 'application/json'}
+    return df.sort_values(by='points', ascending=False).to_json(orient='records'), 200, {'Content-Type': 'application/json'}
 
-def safe_int(val):
-    if val == "" or val is None: return 0
-    try: return int(val)
-    except (ValueError, TypeError): return 0
-
-# --- NEW DIRECT DATA CONTROL SUBSYSTEM (Superuser/Admin/Organizer Only) ---
+# --- PLAYER API ROUTES ---
 @app.route('/api/add_player', methods=['POST'])
 def add_player():
-    if session.get('role') not in ['superuser', 'admin', 'organizer']: 
-        return jsonify({"status": "error", "message": "Unauthorized"}), 403
-    
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
     data = request.json
     name = data.get('name', '').strip()
     if not name: return jsonify({"status": "error", "message": "Player name is required!"})
 
-    df = load_clean_df()
-    new_row = {
-        "RecordType": "Player", "EntityName": name, "TeamName": data.get('team', '').strip(),
-        "Matches": safe_int(data.get('matches')), "Wins": safe_int(data.get('wins')),
-        "Losses": safe_int(data.get('losses')), "Kills": safe_int(data.get('kills')),
-        "Deaths": safe_int(data.get('deaths')), "Assists": safe_int(data.get('assists')),
-        "Points": safe_int(data.get('points'))
-    }
+    df = load_players_df()
+    new_row = {"Name": name, "Batch": data.get('batch', '').strip(), "IGN": data.get('ign', '').strip(), "IGN_ID": data.get('ign_id', '').strip()}
     
-    df = df[~((df['RecordType'] == 'Player') & (df['EntityName'].str.lower() == new_row['EntityName'].lower()))]
+    df = df[df['Name'].str.lower() != name.lower()]
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    df.to_csv(CSV_FILE, index=False)
-    return jsonify({"status": "success", "message": "Player stats added/updated!"})
-
-
-@app.route('/api/add_team', methods=['POST'])
-def add_team():
-    if session.get('role') not in ['superuser', 'admin', 'organizer']: 
-        return jsonify({"status": "error", "message": "Unauthorized"}), 403
-    
-    data = request.json
-    name = data.get('name', '').strip()
-    if not name: return jsonify({"status": "error", "message": "Team name is required!"})
-
-    df = load_clean_df()
-    new_row = {
-        "RecordType": "Team", "EntityName": name, "TeamName": "None",
-        "Matches": safe_int(data.get('matches')), "Wins": safe_int(data.get('wins')),
-        "Losses": safe_int(data.get('losses')), "Kills": 0, "Deaths": 0, "Assists": 0,
-        "Points": safe_int(data.get('points'))
-    }
-    
-    df = df[~((df['RecordType'] == 'Team') & (df['EntityName'].str.lower() == new_row['EntityName'].lower()))]
-    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-    df.to_csv(CSV_FILE, index=False)
-    return jsonify({"status": "success", "message": "Team stats added/updated!"})
-
+    df.to_csv(PLAYERS_CSV, index=False)
+    return jsonify({"status": "success", "message": "Player added to list!"})
 
 @app.route('/api/modify_player', methods=['POST'])
 def modify_player():
-    if session.get('role') not in ['superuser', 'admin', 'organizer']: 
-        return jsonify({"status": "error", "message": "Unauthorized"}), 403
-    
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
     data = request.json
-    df = load_clean_df()
+    df = load_players_df()
     target = data.get('target_name', '').strip()
-    idx = df[(df['RecordType'] == 'Player') & (df['EntityName'].str.lower().str.strip() == target.lower())].index
+    idx = df[df['Name'].str.lower().str.strip() == target.lower()].index
     
     if not idx.empty:
-        if data.get('team'): df.loc[idx, 'TeamName'] = data.get('team').strip()
-        for field, col in [('matches', 'Matches'), ('wins', 'Wins'), ('losses', 'Losses'), 
-                           ('kills', 'Kills'), ('deaths', 'Deaths'), ('assists', 'Assists'), ('points', 'Points')]:
+        for field, col in [('batch', 'Batch'), ('ign', 'IGN'), ('ign_id', 'IGN_ID')]:
             val = data.get(field)
-            if val != "" and val is not None: df.loc[idx, col] = safe_int(val)
-        
-        df.to_csv(CSV_FILE, index=False)
-        return jsonify({"status": "success", "message": f"Successfully updated stats for {target}."})
+            if val is not None and val != "": df.loc[idx, col] = str(val).strip()
+        df.to_csv(PLAYERS_CSV, index=False)
+        return jsonify({"status": "success", "message": f"Successfully updated {target}."})
     return jsonify({"status": "error", "message": "Player not found. Check spelling."}), 404
-
-
-@app.route('/api/modify_team', methods=['POST'])
-def modify_team():
-    if session.get('role') not in ['superuser', 'admin', 'organizer']: 
-        return jsonify({"status": "error", "message": "Unauthorized"}), 403
-    
-    data = request.json
-    df = load_clean_df()
-    target = data.get('target_name', '').strip()
-    idx = df[(df['RecordType'] == 'Team') & (df['EntityName'].str.lower().str.strip() == target.lower())].index
-    
-    if not idx.empty:
-        for field, col in [('matches', 'Matches'), ('wins', 'Wins'), ('losses', 'Losses'), ('points', 'Points')]:
-            val = data.get(field)
-            if val != "" and val is not None: df.loc[idx, col] = safe_int(val)
-        
-        df.to_csv(CSV_FILE, index=False)
-        return jsonify({"status": "success", "message": f"Successfully updated stats for {target}."})
-    return jsonify({"status": "error", "message": "Team not found. Check spelling."}), 404
 
 @app.route('/api/delete_player', methods=['POST'])
 def delete_player():
     if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error"}), 403
     player_name = request.json.get('player_name', '').strip()
-    df = load_clean_df()
-    df = df[~((df['RecordType'] == 'Player') & (df['EntityName'].str.lower() == player_name.lower()))]
-    df.to_csv(CSV_FILE, index=False)
+    df = load_players_df()
+    df = df[df['Name'].str.lower() != player_name.lower()]
+    df.to_csv(PLAYERS_CSV, index=False)
     return jsonify({"status": "success", "message": f"Purged player records."})
+
+# --- TEAM API ROUTES ---
+def safe_int(val):
+    if val == "" or val is None: return 0
+    try: return int(val)
+    except (ValueError, TypeError): return 0
+
+@app.route('/api/add_team', methods=['POST'])
+def add_team():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
+    data = request.json
+    name = data.get('name', '').strip()
+    if not name: return jsonify({"status": "error", "message": "Team name is required!"})
+
+    df = load_teams_df()
+    new_row = {"TeamName": name, "Matches": safe_int(data.get('matches')), "Wins": safe_int(data.get('wins')), "Losses": safe_int(data.get('losses')), "Points": safe_int(data.get('points'))}
+    
+    df = df[df['TeamName'].str.lower() != name.lower()]
+    df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    df.to_csv(TEAMS_CSV, index=False)
+    return jsonify({"status": "success", "message": "Team stats added/updated!"})
+
+@app.route('/api/modify_team', methods=['POST'])
+def modify_team():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
+    data = request.json
+    df = load_teams_df()
+    target = data.get('target_name', '').strip()
+    idx = df[df['TeamName'].str.lower().str.strip() == target.lower()].index
+    
+    if not idx.empty:
+        for field, col in [('matches', 'Matches'), ('wins', 'Wins'), ('losses', 'Losses'), ('points', 'Points')]:
+            val = data.get(field)
+            if val != "" and val is not None: df.loc[idx, col] = safe_int(val)
+        df.to_csv(TEAMS_CSV, index=False)
+        return jsonify({"status": "success", "message": f"Successfully updated stats for {target}."})
+    return jsonify({"status": "error", "message": "Team not found."}), 404
 
 @app.route('/api/delete_team', methods=['POST'])
 def delete_team():
     if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error"}), 403
     team_name = request.json.get('team_name', '').strip()
-    df = load_clean_df()
-    df = df[~((df['RecordType'] == 'Team') & (df['EntityName'].str.lower() == team_name.lower()))]
-    df.to_csv(CSV_FILE, index=False)
+    df = load_teams_df()
+    df = df[df['TeamName'].str.lower() != team_name.lower()]
+    df.to_csv(TEAMS_CSV, index=False)
     return jsonify({"status": "success", "message": f"Purged team records."})
+
+# --- EXCEL UPLOAD API ROUTES ---
+@app.route('/api/upload_players_excel', methods=['POST'])
+def upload_players_excel():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
+    if 'file' not in request.files: return jsonify({"status": "error", "message": "No file uploaded"})
+    
+    try:
+        df = pd.read_excel(request.files['file'])
+        df.columns = df.columns.str.strip()
+        required_cols = ['Name', 'Batch', 'IGN', 'IGN_ID']
+        for col in required_cols:
+            if col not in df.columns: df[col] = ""
+            
+        if 'IGN_ID' in df.columns:
+            df['IGN_ID'] = df['IGN_ID'].fillna('').astype(str).apply(lambda x: x.replace('.0', '') if x.endswith('.0') else x)
+            
+        df[required_cols].to_csv(PLAYERS_CSV, index=False)
+        return jsonify({"status": "success", "message": "Player database successfully replaced via Excel!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Excel Error: {str(e)}"}), 500
+
+@app.route('/api/upload_teams_excel', methods=['POST'])
+def upload_teams_excel():
+    if session.get('role') not in ['superuser', 'admin', 'organizer']: return jsonify({"status": "error", "message": "Unauthorized"}), 403
+    if 'file' not in request.files: return jsonify({"status": "error", "message": "No file uploaded"})
+    
+    try:
+        df = pd.read_excel(request.files['file'])
+        df.columns = df.columns.str.strip()
+        required_cols = ['TeamName', 'Matches', 'Wins', 'Losses', 'Points']
+        for col in required_cols:
+            if col not in df.columns: df[col] = 0
+            
+        df[required_cols].to_csv(TEAMS_CSV, index=False)
+        return jsonify({"status": "success", "message": "Team database successfully replaced via Excel!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Excel Error: {str(e)}"}), 500
 
 # --- USER ROLES & HIERARCHICAL ADMINISTRATIVE SERVICES ---
 @app.route('/api/users', methods=['GET'])
@@ -607,7 +807,6 @@ def admin_reset_password():
     
     return jsonify({"status": "success", "message": "Password reset successfully!"})
 
-# --- OTP/OAUTH ---
 @app.route('/api/send_otp', methods=['POST'])
 def send_otp():
     email = request.json.get('email').strip().lower()
