@@ -51,7 +51,6 @@ def load_players_df():
     try:
         df = pd.read_csv(PLAYERS_CSV)
         df.columns = df.columns.str.strip()
-        # Ensure IGN_ID is treated as a string to prevent scientific notation
         if 'IGN_ID' in df.columns:
             df['IGN_ID'] = df['IGN_ID'].fillna('').astype(str).apply(lambda x: x.replace('.0', '') if x.endswith('.0') else x)
         return df
@@ -61,16 +60,22 @@ def load_players_df():
 def load_teams_df():
     if not os.path.exists(TEAMS_CSV) or os.path.getsize(TEAMS_CSV) == 0:
         with open(TEAMS_CSV, 'w') as f:
-            f.write("TeamName,Matches,Wins,Losses,Points\nT1_Esports,10,7,3,350\nBlacklist_Intl,12,9,3,450")
+            f.write("TeamName,Matches,Wins,Losses,Points,Logo\nT1_Esports,10,7,3,350,\nBlacklist_Intl,12,9,3,450,")
     try:
         df = pd.read_csv(TEAMS_CSV)
         df.columns = df.columns.str.strip()
         for col in ['Matches', 'Wins', 'Losses', 'Points']:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+        
+        if 'Logo' not in df.columns:
+            df['Logo'] = ""
+        else:
+            df['Logo'] = df['Logo'].fillna("")
+            
         return df
     except Exception:
-        return pd.DataFrame(columns=['TeamName', 'Matches', 'Wins', 'Losses', 'Points'])
+        return pd.DataFrame(columns=['TeamName', 'Matches', 'Wins', 'Losses', 'Points', 'Logo'])
 
 # --- DATABASE ENGINE DISPATCH ---
 def init_db():
@@ -262,7 +267,7 @@ def upload_tourney_logo():
     
     if file:
         team_name_safe = request.form.get('team_name', 'team').replace(' ', '_').lower()
-        filename = secure_filename(f"tourney_{team_name_safe}_{int(datetime.now().timestamp())}_{file.filename}")
+        filename = secure_filename(f"logo_{team_name_safe}_{int(datetime.now().timestamp())}_{file.filename}")
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         
         return jsonify({"status": "success", "message": "Logo uploaded!", "logo_url": f"/uploads/{filename}"})
@@ -578,7 +583,7 @@ def team_leaderboard():
     
     df = df.rename(columns={
         'TeamName': 'team_name', 'Matches': 'matches_played', 
-        'Wins': 'wins', 'Losses': 'losses', 'Points': 'points'
+        'Wins': 'wins', 'Losses': 'losses', 'Points': 'points', 'Logo': 'logo'
     })
     
     return df.sort_values(by='points', ascending=False).to_json(orient='records'), 200, {'Content-Type': 'application/json'}
@@ -638,7 +643,14 @@ def add_team():
     if not name: return jsonify({"status": "error", "message": "Team name is required!"})
 
     df = load_teams_df()
-    new_row = {"TeamName": name, "Matches": safe_int(data.get('matches')), "Wins": safe_int(data.get('wins')), "Losses": safe_int(data.get('losses')), "Points": safe_int(data.get('points'))}
+    new_row = {
+        "TeamName": name, 
+        "Matches": safe_int(data.get('matches')), 
+        "Wins": safe_int(data.get('wins')), 
+        "Losses": safe_int(data.get('losses')), 
+        "Points": safe_int(data.get('points')),
+        "Logo": data.get('logo', '').strip()
+    }
     
     df = df[df['TeamName'].str.lower() != name.lower()]
     df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
@@ -657,6 +669,10 @@ def modify_team():
         for field, col in [('matches', 'Matches'), ('wins', 'Wins'), ('losses', 'Losses'), ('points', 'Points')]:
             val = data.get(field)
             if val != "" and val is not None: df.loc[idx, col] = safe_int(val)
+            
+        if 'logo' in data:
+            df.loc[idx, 'Logo'] = data.get('logo', '').strip()
+            
         df.to_csv(TEAMS_CSV, index=False)
         return jsonify({"status": "success", "message": f"Successfully updated stats for {target}."})
     return jsonify({"status": "error", "message": "Team not found."}), 404
@@ -699,10 +715,12 @@ def upload_teams_excel():
     try:
         df = pd.read_excel(request.files['file'])
         df.columns = df.columns.str.strip()
-        required_cols = ['TeamName', 'Matches', 'Wins', 'Losses', 'Points']
+        required_cols = ['TeamName', 'Matches', 'Wins', 'Losses', 'Points', 'Logo']
         for col in required_cols:
-            if col not in df.columns: df[col] = 0
-            
+            if col not in df.columns: 
+                df[col] = 0 if col in ['Matches', 'Wins', 'Losses', 'Points'] else ""
+                
+        df['Logo'] = df['Logo'].fillna("")
         df[required_cols].to_csv(TEAMS_CSV, index=False)
         return jsonify({"status": "success", "message": "Team database successfully replaced via Excel!"})
     except Exception as e:
@@ -726,6 +744,50 @@ def get_users():
     users = [{"id": r[0], "username": r[1], "email": r[2], "role": r[3]} for r in c.fetchall()]
     conn.close()
     return jsonify(users)
+
+@app.route('/api/admin_create_user', methods=['POST'])
+def admin_create_user():
+    current_role = session.get('role')
+    if current_role not in ['superuser', 'admin']: 
+        return jsonify({"status": "error", "message": "Unauthorized"}), 403
+        
+    data = request.json
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    new_role = data.get('role', 'user')
+    
+    if not username or not email or not password:
+        return jsonify({"status": "error", "message": "All fields are required!"})
+        
+    if not email.endswith('@gmail.com'): 
+        return jsonify({"status": "error", "message": "Must use a valid @gmail.com address!"})
+        
+    if current_role == 'admin' and new_role in ['superuser', 'admin']:
+        return jsonify({"status": "error", "message": "Admins cannot create superuser or admin accounts."}), 403
+        
+    conn = sqlite3.connect('users.db')
+    c = conn.cursor()
+    
+    c.execute("SELECT id FROM users WHERE username = ?", (username,))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"status": "error", "message": "Username already taken!"})
+        
+    c.execute("SELECT id FROM users WHERE email = ?", (email,))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"status": "error", "message": "Email already registered!"})
+
+    hashed_pw = generate_password_hash(password)
+    try:
+        c.execute("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", (username, email, hashed_pw, new_role))
+        conn.commit()
+        return jsonify({"status": "success", "message": f"User {username} created successfully!"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": "Database error occurred."})
+    finally:
+        conn.close()
 
 @app.route('/api/update_role', methods=['POST'])
 def update_role():

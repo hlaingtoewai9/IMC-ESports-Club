@@ -10,12 +10,8 @@
         
         .hero-banner { background: linear-gradient(90deg, #14171d 30%, transparent 100%), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80') center/cover; border-bottom: 1px solid #1f232b; }
 
-        .auth-input { width: 100%; background: #0b0c10; color: #fff; padding: 12px 16px; border: 1px solid #1f232b; margin-bottom: 16px; font-size: 14px; outline: none; transition: 0.2s; border-radius: 8px;}
+        .auth-input { width: 100%; background: #0b0c10; color: #fff; padding: 12px 16px; border: 1px solid #1f232b; margin-bottom: 16px; font-size: 14px; outline: none; transition: 0.2s; border-radius: 8px; cursor: pointer; }
         .auth-input:focus { border-color: #ff6b35; box-shadow: 0 0 0 1px #ff6b35; }
-        
-        /* Custom styling for the datalist input to match the select style */
-        input[list]::-webkit-calendar-picker-indicator { cursor: pointer; filter: invert(1); opacity: 0.5; }
-        input[list]:focus::-webkit-calendar-picker-indicator { opacity: 1; }
         
         .auth-btn { width: 100%; background: #ff6b35; color: white; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; transition: 0.2s; cursor: pointer;}
         .auth-btn:hover { background: #e85a25; }
@@ -54,7 +50,7 @@
             <div class="inline-block p-3 bg-[#1f232b] rounded-full mb-4 border border-[#2a2f3a] shadow-lg">
                 <svg class="w-8 h-8 text-[#ff6b35]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
-            <h1 class="text-3xl font-bold text-white tracking-wide">Varsity Esports Championship</h1>
+            <h1 class="text-3xl font-bold text-white tracking-wide">IMC Esports Club</h1>
             <p class="text-[#8892b0] text-sm mt-2 max-w-lg mx-auto">Official Scrim Check-In Portal. Teams must check in their roster 15 minutes prior to the scheduled match block.</p>
         </div>
     </div>
@@ -73,20 +69,19 @@
             <form id="form-team" onsubmit="event.preventDefault(); submitCheckIn('team');">
                 <div class="mb-4">
                     <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Registered Team Name</label>
-                    <input type="text" id="ci_team_name" class="auth-input" placeholder="e.g., IMU Esports" required>
+                    <input type="text" id="ci_team_name" class="auth-input cursor-text" placeholder="e.g., IMU Esports" required>
                 </div>
                 
                 <div class="mb-4">
                     <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Captain IGN</label>
-                    <input type="text" id="ci_captain" class="auth-input" placeholder="In-Game Name" required>
+                    <input type="text" id="ci_captain" class="auth-input cursor-text" placeholder="In-Game Name" required>
                 </div>
 
                 <div class="mb-6">
                     <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Match Block</label>
-                    <input list="match-times" id="ci_team_time" class="auth-input" placeholder="Select or type custom time..." required>
-                    <datalist id="match-times">
-                        <!-- Populated by JS -->
-                    </datalist>
+                    <select id="ci_team_time" class="auth-input" required>
+                        <option value="" disabled selected>Select a time slot...</option>
+                    </select>
                 </div>
 
                 <button type="submit" class="auth-btn flex items-center justify-center gap-2">
@@ -99,25 +94,33 @@
             <form id="form-player" class="hidden-view" onsubmit="event.preventDefault(); submitCheckIn('player');">
                 <div class="mb-4">
                     <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Player IGN</label>
-                    <input type="text" id="ci_player_ign" class="auth-input" placeholder="Exact In-Game Name" required>
+                    <input type="text" id="ci_player_ign" class="auth-input cursor-text" placeholder="Exact In-Game Name" required>
                 </div>
 
                 <div class="mb-4">
                     <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Affiliated Team</label>
-                    <input type="text" id="ci_player_team" class="auth-input" placeholder="Your Team Name" required>
+                    <input type="text" id="ci_player_team" class="auth-input cursor-text" placeholder="Your Team Name" required>
+                </div>
+
+                <!-- ADDED: Match Block Dropdown for Players -->
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Match Block</label>
+                    <select id="ci_player_time" class="auth-input" required>
+                        <option value="" disabled selected>Select a time slot...</option>
+                    </select>
                 </div>
 
                 <div class="mb-6">
                     <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Primary Role</label>
-                    <input list="player-roles" id="ci_player_role" class="auth-input" placeholder="Select or type custom role..." required>
-                    <datalist id="player-roles">
-                        <option value="Jungler">
-                        <option value="Mid Lane">
-                        <option value="Gold Lane">
-                        <option value="EXP Lane">
-                        <option value="Roamer">
-                        <option value="Substitute">
-                    </datalist>
+                    <select id="ci_player_role" class="auth-input" required>
+                        <option value="" disabled selected>Select primary role...</option>
+                        <option value="Jungler">Jungler</option>
+                        <option value="Mid Lane">Mid Lane</option>
+                        <option value="Gold Lane">Gold Lane</option>
+                        <option value="EXP Lane">EXP Lane</option>
+                        <option value="Roamer">Roamer</option>
+                        <option value="Substitute">Substitute</option>
+                    </select>
                 </div>
 
                 <button type="submit" class="auth-btn flex items-center justify-center gap-2">
@@ -126,14 +129,14 @@
                 </button>
             </form>
 
-            <!-- Admin Time Management Panel (Hidden by Default) -->
+            <!-- Admin Time Management Panel -->
             <div id="admin-time-manager" class="hidden-view mt-6 pt-6 border-t border-[#1f232b]">
                 <h3 class="text-white text-sm font-bold mb-4 flex items-center gap-2">
                     <svg class="w-4 h-4 text-[#ff6b35]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                     Manage Check-In Times (Admin Only)
                 </h3>
                 <div class="flex gap-2 mb-4">
-                    <input type="text" id="new_time_slot" class="auth-input !mb-0" placeholder="e.g. 21:00 (9:00 PM) Slot">
+                    <input type="text" id="new_time_slot" class="auth-input !mb-0 cursor-text" placeholder="e.g. 21:00 (9:00 PM) Slot">
                     <button onclick="addTimeSlot()" class="bg-[#10b981] hover:bg-[#059669] text-white px-4 py-2 rounded-lg font-bold text-sm transition">Add</button>
                 </div>
                 <div id="admin-time-list" class="space-y-2">
@@ -167,22 +170,25 @@
             setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
         }
 
-        // Function to fetch and populate times
+        // Fetch and populate times into BOTH standard <select> dropdowns
         async function fetchCheckinTimes() {
             try {
                 let res = await fetch(`${apiUrl}/api/checkin_times`);
                 let data = await res.json();
                 
                 if (data.status === 'success') {
-                    const datalist = document.getElementById('match-times');
+                    const timeSelect = document.getElementById('ci_team_time');
+                    const playerTimeSelect = document.getElementById('ci_player_time');
                     const adminList = document.getElementById('admin-time-list');
                     
-                    datalist.innerHTML = '';
+                    timeSelect.innerHTML = '<option value="" disabled selected>Select a time slot...</option>';
+                    playerTimeSelect.innerHTML = '<option value="" disabled selected>Select a time slot...</option>';
                     adminList.innerHTML = '';
                     
                     data.data.forEach(time => {
-                        // Populate Player/Team Selection
-                        datalist.innerHTML += `<option value="${time}">`;
+                        // Populate Team and Player Dropdown Options
+                        timeSelect.innerHTML += `<option value="${time}">${time}</option>`;
+                        playerTimeSelect.innerHTML += `<option value="${time}">${time}</option>`;
                         
                         // Populate Admin Deletion List
                         adminList.innerHTML += `
@@ -212,7 +218,7 @@
                 if (result.status === 'success') {
                     showToast(result.message, 'success');
                     timeInput.value = '';
-                    fetchCheckinTimes(); // Reload the lists
+                    fetchCheckinTimes(); // Reload the dropdown lists
                 } else {
                     showToast(result.message, 'error');
                 }
@@ -231,7 +237,7 @@
                 let result = await res.json();
                 if (result.status === 'success') {
                     showToast(result.message, 'success');
-                    fetchCheckinTimes(); // Reload the lists
+                    fetchCheckinTimes(); // Reload the dropdown lists
                 } else {
                     showToast(result.message, 'error');
                 }
@@ -288,14 +294,16 @@
                     type: 'Team',
                     name: document.getElementById('ci_team_name').value,
                     associated_info: document.getElementById('ci_captain').value,
-                    role_or_time: document.getElementById('ci_team_time').value // Now pulls from text input
+                    role_or_time: document.getElementById('ci_team_time').value 
                 };
             } else {
+                const role = document.getElementById('ci_player_role').value;
+                const time = document.getElementById('ci_player_time').value;
                 payload = {
                     type: 'Player',
                     name: document.getElementById('ci_player_ign').value,
                     associated_info: document.getElementById('ci_player_team').value,
-                    role_or_time: document.getElementById('ci_player_role').value // Now pulls from text input
+                    role_or_time: `${role} - ${time}` // Combines Role and Time Slot automatically
                 };
             }
 

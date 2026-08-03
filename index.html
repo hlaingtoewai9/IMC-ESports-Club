@@ -129,7 +129,7 @@
     <div id="dashboard-screen" class="flex flex-col md:flex-row h-screen w-full hidden-view relative">
         
         <!-- SIDEBAR -->
-        <aside id="main-sidebar" class="w-[260px] bg-[#0f1115] border-r border-[#1f232b] flex flex-col h-full shrink-0 absolute md:relative">
+        <aside id="main-sidebar" class="w-[260px] bg-[#0f1115] border-r border-[#1f232b] flex flex-col h-full shrink-0 absolute md:relative z-50">
             
             <a href="/profile" class="p-6 flex items-center gap-4 border-b border-[#1f232b] hover:bg-[#1a1d27] transition cursor-pointer w-full" style="text-decoration: none;">
                 <img id="profile-avatar" src="https://placehold.co/40x40/2a2f3a/fff?text=U" class="w-10 h-10 rounded-full object-cover border border-[#2a2f3a]" alt="User">
@@ -294,28 +294,44 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Add Team Data -->
                             <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
-                                <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Add Team (Exact Stats)</h3>
+                                <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Add Team</h3>
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div class="w-12 h-12 shrink-0 relative rounded-lg border border-dashed border-[#3b82f6] hover:border-[#ff6b35] overflow-hidden bg-[#14171d] flex items-center justify-center cursor-pointer transition">
+                                        <img id="at-preview" src="" class="w-full h-full object-cover hidden">
+                                        <svg id="at-icon" class="w-5 h-5 text-[#717686]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        <input type="file" id="at_file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="uploadTeamLogo(this, 'at')">
+                                    </div>
+                                    <input type="text" id="at_name" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Team Name (Required)">
+                                    <input type="hidden" id="at_logo_url">
+                                </div>
                                 <div class="grid grid-cols-2 gap-3 mb-4">
-                                    <input type="text" id="at_name" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm col-span-2" placeholder="Team Name (Required)">
                                     <input type="number" id="at_matches" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Total Matches">
                                     <input type="number" id="at_points" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Total Points">
                                     <input type="number" id="at_wins" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Wins">
                                     <input type="number" id="at_losses" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Losses">
                                 </div>
-                                <button onclick="addTeam()" class="w-full bg-[#10b981] hover:bg-[#059669] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(16,185,129,0.3)] mt-4 md:mt-[105px]">Create Team</button>
+                                <button onclick="addTeam()" class="w-full bg-[#10b981] hover:bg-[#059669] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(16,185,129,0.3)] mt-4">Create Team</button>
                             </div>
 
                             <!-- Modify Team -->
                             <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
                                 <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Modify Team Stats</h3>
-                                <input type="text" id="mt_target" class="w-full bg-[#14171d] text-white p-2.5 border border-[#ff6b35] rounded-lg text-sm mb-4" placeholder="Target Team Name (Exact)">
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div class="w-12 h-12 shrink-0 relative rounded-lg border border-dashed border-[#3b82f6] hover:border-[#ff6b35] overflow-hidden bg-[#14171d] flex items-center justify-center cursor-pointer transition">
+                                        <img id="mt-preview" src="" class="w-full h-full object-cover hidden">
+                                        <svg id="mt-icon" class="w-5 h-5 text-[#717686]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                        <input type="file" id="mt_file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="uploadTeamLogo(this, 'mt')">
+                                    </div>
+                                    <input type="text" id="mt_target" class="w-full bg-[#14171d] text-white p-2.5 border border-[#ff6b35] rounded-lg text-sm" placeholder="Target Team Name (Exact)">
+                                    <input type="hidden" id="mt_logo_url">
+                                </div>
                                 <div class="grid grid-cols-2 gap-3 mb-4">
                                     <input type="number" id="mt_matches" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Matches">
                                     <input type="number" id="mt_points" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Points">
                                     <input type="number" id="mt_wins" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Wins">
                                     <input type="number" id="mt_losses" class="w-full bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm" placeholder="Losses">
                                 </div>
-                                <button onclick="modifyTeam()" class="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(59,130,246,0.3)] mt-4 md:mt-[105px]">Overwrite Team Data</button>
+                                <button onclick="modifyTeam()" class="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(59,130,246,0.3)] mt-4">Overwrite Team Data</button>
                             </div>
 
                             <!-- Delete Team -->
@@ -334,7 +350,7 @@
                                     <input type="file" id="excel_teams" accept=".xlsx, .xls" class="flex-1 bg-[#14171d] text-white p-2.5 border border-[#2a2f3a] rounded-lg text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#1f232b] file:text-white hover:file:bg-[#2a2f3a]">
                                     <button onclick="uploadExcel('teams')" class="w-48 bg-[#8b5cf6] hover:bg-[#7c3aed] text-white px-4 py-3 rounded-lg text-sm font-medium shadow-[0_4px_14px_rgba(139,92,246,0.3)]">Upload Excel</button>
                                 </div>
-                                <p class="text-xs text-[#717686] mt-2">Required Columns: <strong class="text-white">TeamName, Matches, Wins, Losses, Points</strong></p>
+                                <p class="text-xs text-[#717686] mt-2">Required Columns: <strong class="text-white">TeamName, Matches, Wins, Losses, Points, Logo</strong></p>
                             </div>
                         </div>
                     </div>
@@ -343,8 +359,23 @@
                 <!-- ROLE MANAGEMENT SYSTEM -->
                 <div id="roles" class="page-section">
                     <div class="bg-[#14171d] rounded-xl p-4 md:p-8 border border-[#1f232b]">
-                        <h2 class="text-xl text-white font-semibold mb-8 border-b border-[#1f232b] pb-4">Role & Account Management</h2>
                         
+                        <!-- CREATE NEW ACCOUNT -->
+                        <h2 class="text-xl text-white font-semibold mb-6 border-b border-[#1f232b] pb-4">Create New Account</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+                            <input type="text" id="new_user_name" class="auth-input !mb-0" placeholder="Username">
+                            <input type="email" id="new_user_email" class="auth-input !mb-0" placeholder="Email (@gmail.com)">
+                            <input type="password" id="new_user_password" class="auth-input !mb-0" placeholder="Password">
+                            <select id="new_user_role" class="auth-input !mb-0">
+                                <option value="user">Standard User</option>
+                                <option value="player">Player</option>
+                                <option value="organizer">Data Organizer</option>
+                                <option value="admin" id="opt_admin_role">Admin</option>
+                            </select>
+                            <button onclick="adminCreateUser()" class="md:col-span-4 bg-[#10b981] hover:bg-[#059669] text-white px-6 py-2.5 rounded-lg text-sm font-medium transition shadow-lg w-full md:w-auto md:ml-auto">Create User</button>
+                        </div>
+                        
+                        <h2 class="text-xl text-white font-semibold mb-6 border-b border-[#1f232b] pb-4">Manage Existing Roles</h2>
                         <div class="bg-[#0b0c10] overflow-hidden rounded-lg border border-[#1f232b]">
                             <table class="custom-table">
                                 <thead>
@@ -527,6 +558,13 @@
 
                     if (['superuser', 'admin'].includes(data.role)) {
                         document.getElementById('nav-roles').style.display = 'flex';
+                        
+                        // Hide "Admin" role option for regular admins creating users
+                        if (data.role === 'admin') {
+                            const optAdmin = document.getElementById('opt_admin_role');
+                            if (optAdmin) optAdmin.style.display = 'none';
+                        }
+                        
                         loadUsers();
                     } else {
                         document.getElementById('nav-roles').style.display = 'none';
@@ -599,6 +637,37 @@
                 showToast("Excel upload failed.", "error");
             }
         }
+        
+        async function uploadTeamLogo(inputElement, prefix) {
+            const file = inputElement.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("logo", file);
+            
+            let teamName = document.getElementById(`${prefix}_name`) || document.getElementById(`${prefix}_target`);
+            if (teamName && teamName.value) {
+                formData.append("team_name", teamName.value);
+            }
+
+            try {
+                let res = await fetch(`${apiUrl}/api/tournament/upload_logo`, { method: "POST", body: formData });
+                let data = await res.json();
+
+                if (data.status === 'success') {
+                    document.getElementById(`${prefix}_logo_url`).value = data.logo_url;
+                    document.getElementById(`${prefix}-icon`).classList.add('hidden');
+                    const previewEl = document.getElementById(`${prefix}-preview`);
+                    previewEl.src = data.logo_url;
+                    previewEl.classList.remove('hidden');
+                    showToast("Logo uploaded successfully. Remember to submit the form to save!");
+                } else {
+                    showToast(data.message, "error");
+                }
+            } catch (e) {
+                showToast("Upload failed.", "error");
+            }
+        }
 
         async function loadLeaderboards() {
             let pTable = document.querySelector("#players .custom-table thead");
@@ -642,10 +711,14 @@
                         let wrColor = wrVal >= 0.5 ? '#10b981' : '#6366f1'; 
                         const initial = t.team_name.charAt(0).toUpperCase();
                         
+                        let logoHtml = t.logo ? 
+                            `<img src="${t.logo}" class="w-6 h-6 rounded object-cover border border-[#2a2f3a] bg-[#1a1d27]">` : 
+                            `<div class="bg-[#1f232b] rounded flex items-center justify-center text-[#ff6b35] text-xs font-bold w-6 h-6 border border-[#2a2f3a]">${initial}</div>`;
+                        
                         tList.innerHTML += `<tr>
                             <td style="color:#717686; padding-left:25px;">${i+1}</td>
                             <td class="truncate" style="display: flex; align-items: center; gap: 12px; border-bottom: none;">
-                                <div class="bg-[#1f232b] rounded flex items-center justify-center text-[#ff6b35] text-xs font-bold w-6 h-6 border border-[#2a2f3a]">${initial}</div>
+                                ${logoHtml}
                                 <span class="text-[#e2e8f0] font-medium">${t.team_name}</span>
                             </td>
                             <td class="truncate text-[#c5c6c7]">${t.matches_played}</td>
@@ -683,16 +756,21 @@
 
         async function addTeam() {
             const payload = {
-                name: document.getElementById('at_name').value, matches: document.getElementById('at_matches').value,
-                points: document.getElementById('at_points').value, wins: document.getElementById('at_wins').value,
-                losses: document.getElementById('at_losses').value
+                name: document.getElementById('at_name').value, 
+                matches: document.getElementById('at_matches').value,
+                points: document.getElementById('at_points').value, 
+                wins: document.getElementById('at_wins').value,
+                losses: document.getElementById('at_losses').value,
+                logo: document.getElementById('at_logo_url').value
             };
             try {
                 let res = await fetch(`${apiUrl}/api/add_team`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
                 let result = await res.json();
                 if(result.status === "success") {
                     showToast(result.message);
-                    ['at_name','at_matches','at_points','at_wins','at_losses'].forEach(id => document.getElementById(id).value = '');
+                    ['at_name','at_matches','at_points','at_wins','at_losses', 'at_logo_url'].forEach(id => document.getElementById(id).value = '');
+                    document.getElementById('at-preview').classList.add('hidden');
+                    document.getElementById('at-icon').classList.remove('hidden');
                     loadLeaderboards(); 
                 } else { showToast(result.message, "error"); }
             } catch(e) { showToast("Error adding record", "error"); }
@@ -722,14 +800,17 @@
                 matches: document.getElementById('mt_matches').value, 
                 points: document.getElementById('mt_points').value, 
                 wins: document.getElementById('mt_wins').value, 
-                losses: document.getElementById('mt_losses').value
+                losses: document.getElementById('mt_losses').value,
+                logo: document.getElementById('mt_logo_url').value
             };
             try {
                 let res = await fetch(`${apiUrl}/api/modify_team`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
                 let result = await res.json();
                 if(result.status === "success") {
                     showToast(result.message);
-                    ['mt_target','mt_matches','mt_points','mt_wins','mt_losses'].forEach(id => document.getElementById(id).value = '');
+                    ['mt_target','mt_matches','mt_points','mt_wins','mt_losses', 'mt_logo_url'].forEach(id => document.getElementById(id).value = '');
+                    document.getElementById('mt-preview').classList.add('hidden');
+                    document.getElementById('mt-icon').classList.remove('hidden');
                     loadLeaderboards(); 
                 } else { showToast(result.message, "error"); }
             } catch(e) { showToast("Error updating record", "error"); }
@@ -749,6 +830,35 @@
                 showToast("Team deleted successfully");
                 document.getElementById('del_t_name').value = ''; loadLeaderboards();
             } catch(e) { showToast("Error deleting team", "error"); }
+        }
+
+        async function adminCreateUser() {
+            const payload = {
+                username: document.getElementById('new_user_name').value,
+                email: document.getElementById('new_user_email').value,
+                password: document.getElementById('new_user_password').value,
+                role: document.getElementById('new_user_role').value
+            };
+            
+            try {
+                let res = await fetch(`${apiUrl}/api/admin_create_user`, { 
+                    method: "POST", 
+                    headers: {"Content-Type":"application/json"}, 
+                    body: JSON.stringify(payload) 
+                });
+                let result = await res.json();
+                
+                if(result.status === "success") {
+                    showToast(result.message);
+                    ['new_user_name', 'new_user_email', 'new_user_password'].forEach(id => document.getElementById(id).value = '');
+                    document.getElementById('new_user_role').value = 'user';
+                    loadUsers(); 
+                } else { 
+                    showToast(result.message, "error"); 
+                }
+            } catch(e) { 
+                showToast("Error creating user", "error"); 
+            }
         }
 
         async function loadUsers() {
