@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upcoming Scrims - IMC Esports</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0c10; color: #e2e8f0; overflow: hidden; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0c10; }
+        ::-webkit-scrollbar-thumb { background: #1f232b; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2a2f3a; }
+
+        .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: #717686; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: 0.2s; margin-bottom: 4px; text-decoration: none;}
+        .sidebar-btn:hover { background: rgba(255,255,255,0.03); color: #fff; }
+        .sidebar-btn.active { background: #1f232b; color: #fff; }
+
+        .hero-banner { background: linear-gradient(90deg, #14171d 40%, transparent 100%), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80') center/cover; border: 1px solid #1f232b; }
+
+        .premium-card { background: #14171d; border: 1px solid #1f232b; border-radius: 12px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); }
+        
+        .match-row { transition: all 0.2s ease; border-bottom: 1px solid #1f232b; }
+        .match-row:last-child { border-bottom: none; }
+        .match-row:hover { background-color: #1a1d27; }
+
+        .score-container { background: #0b0c10; border: 1px solid #1f232b; border-radius: 12px; padding: 4px 8px; display: flex; align-items: center; gap: 12px; }
+        .score-box { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; font-weight: bold; font-size: 13px; }
+        .score-win { background-color: #10b981; color: white; }
+        .score-loss { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        
+        .admin-input { width: 100%; background: #0b0c10; color: white; padding: 12px 16px; border: 1px solid #1f232b; border-radius: 8px; font-size: 14px; outline: none; transition: all 0.2s ease; }
+        .admin-input:focus { border-color: #ff6b35; }
+        ::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.5; cursor: pointer; }
+
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; }
+        #toast.show { visibility: visible; opacity: 1; }
+        #toast.error { background-color: #ef4444; }
+        #toast.success { background-color: #10b981; }
+        
+        /* Mobile Overrides */
+        @media (max-width: 768px) {
+            .grid-cols-2 { grid-template-columns: 1fr !important; }
+            .hero-banner { flex-direction: column; text-align: center; justify-content: center; gap: 1rem; }
+            .hero-banner img { margin: 0 auto; }
+            aside { position: fixed; z-index: 100; transform: translateX(-100%); transition: transform 0.3s ease-in-out; }
+            aside.mobile-open { transform: translateX(0); box-shadow: 10px 0 30px rgba(0,0,0,0.8); }
+            .match-row { flex-direction: column; align-items: stretch; gap: 12px; }
+            .match-row > div:nth-child(2) { margin-right: 0; align-self: flex-start; }
+            .match-row > div:nth-child(3) { position: static; transform: none; width: 100%; justify-content: space-between; }
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen w-full relative">
+    <div id="toast"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="main-sidebar" class="w-[260px] bg-[#0f1115] border-r border-[#1f232b] flex flex-col h-full shrink-0 absolute md:relative z-50">
+        <a href="/profile" class="p-6 flex items-center gap-4 border-b border-[#1f232b] hover:bg-[#1a1d27] transition cursor-pointer w-full" style="text-decoration: none;">
+            <img id="profile-avatar" src="https://placehold.co/40x40/2a2f3a/fff?text=U" class="w-10 h-10 rounded-full object-cover border border-[#2a2f3a]" alt="User">
+            <div class="overflow-hidden">
+                <div id="profile-name" class="text-sm font-semibold text-white truncate w-full">Loading...</div>
+                <div id="profile-role" class="text-xs text-[#ff6b35] font-medium capitalize">User</div>
+            </div>
+        </a>
+
+        <div class="px-5 py-4">
+            <div class="bg-[#14171d] border border-[#1f232b] rounded-md flex items-center px-3 py-2">
+                <svg class="w-4 h-4 text-[#717686] mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" placeholder="Search" class="bg-transparent border-none text-sm text-white w-full focus:outline-none placeholder-[#717686]">
+                <span class="text-[#717686] text-xs font-mono ml-2 border border-[#1f232b] rounded px-1">⌘K</span>
+            </div>
+        </div>
+
+        <div class="px-3 flex-1 overflow-y-auto">
+            <a href="/?tab=players" class="sidebar-btn" style="text-decoration: none;">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                Players Dashboard
+            </a>
+            
+            <a href="/?tab=teams" class="sidebar-btn" style="text-decoration: none;">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                Clubs & Teams
+            </a>
+
+            <!-- ADDED LOCAL TOURNAMENT LINK -->
+            <a href="/localtournament" class="sidebar-btn" style="text-decoration: none;">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                Local Tournament
+            </a>
+
+            <div class="sidebar-btn active">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                Upcoming Scrims
+            </div>
+
+            <a href="/checkin" class="sidebar-btn" id="nav-checkin" style="text-decoration: none; display: none;">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Scrim Check-In
+            </a>
+        </div>
+
+        <div class="p-4 border-t border-[#1f232b]">
+            <a href="/?tab=organizer" class="sidebar-btn" id="nav-organizer" style="display: none; text-decoration: none;">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Data Center
+            </a>
+            <a href="/?tab=roles" class="sidebar-btn" id="nav-roles" style="display: none; text-decoration: none;">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                Role Management
+            </a>
+            <div class="sidebar-btn text-[#ef4444] hover:bg-[#ef4444]/10 hover:text-[#ef4444] mt-1" onclick="submitLogout()">
+                <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                Sign Out
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col h-full overflow-y-auto bg-[#0b0c10] relative w-full">
+        <div class="w-full h-14 border-b border-[#1f232b] flex items-center justify-between px-4 md:px-8 bg-[#0b0c10]/90 backdrop-blur sticky top-0 z-40">
+            <div class="flex items-center gap-3">
+                <button onclick="document.getElementById('main-sidebar').classList.toggle('mobile-open')" class="md:hidden text-[#717686] hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="text-[#717686] text-sm hidden md:block">Overview / Upcoming Scrims</div>
+            </div>
+            <div class="text-[#717686] text-xs flex gap-2">Leaderboard resets in: <span id="leaderboard-countdown" class="text-white font-mono">Loading...</span></div>
+        </div>
+
+        <div class="p-4 md:p-8 max-w-[1100px] mx-auto w-full">
+            
+            <!-- Hero Banner -->
+            <div class="hero-banner rounded-2xl p-8 mb-8 flex items-center justify-between relative overflow-hidden">
+                <div class="flex items-center gap-6 relative z-10 flex-col md:flex-row text-center md:text-left">
+                    <div class="relative">
+                        <div class="absolute inset-0 bg-[#2563eb] blur-md opacity-50 rounded-full"></div>
+                        <img src="/logo.png" class="w-20 h-20 rounded-full relative z-10 border-2 border-[#2563eb] shadow-lg object-cover bg-black">
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-white tracking-wide">IMC Esports Club</h1>
+                        <p class="text-[#8892b0] text-sm mt-2 max-w-md leading-relaxed">The official IMC Esports Club platform. Join tournaments, track player statistics, and stay updated with the latest esports news</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SCRIM MATCH SCHEDULE -->
+            <div class="premium-card overflow-hidden mb-12">
+                <div class="p-6 md:p-8 border-b border-[#1f232b] flex items-center gap-4 bg-[#14171d]">
+                    <h2 class="text-2xl font-bold text-white">Match <span class="text-[#717686] font-normal">Schedule</span></h2>
+                </div>
+
+                <!-- DYNAMIC DATABASE CONTAINER -->
+                <div id="scrims-container" class="flex flex-col">
+                    <div class="p-8 text-center text-[#717686]">Loading matches from database...</div>
+                </div>
+            </div>
+
+            <!-- MANAGE DATA PANEL -->
+            <div id="admin-panel" style="display: none;" class="premium-card p-4 md:p-8">
+                <h2 class="text-xl font-bold text-white mb-6 border-b border-[#1f232b] pb-4 flex items-center gap-3">
+                    <svg class="w-5 h-5 text-[#ff6b35]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    Manage Scrims Data
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <!-- AUTO GENERATE RANDOM MATCHES -->
+                    <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b] md:col-span-2">
+                        <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Auto-Generate Leaderboard Matches (Mon & Tue)</h3>
+                        <p class="text-xs text-[#8892b0] mb-3">Paste a comma-separated list of leaderboard teams. The system will randomly pair them up and schedule matches across the upcoming Monday and Tuesday.</p>
+                        <textarea id="auto_teams" class="admin-input mb-4 h-20" placeholder="e.g. Team Alpha, Team Beta, Omega Squad, Delta Force"></textarea>
+                        <button onclick="generateRandomMatches()" class="bg-[#8b5cf6] hover:bg-[#7c3aed] text-white px-4 py-2.5 rounded-lg text-sm font-medium transition w-full">Shuffle & Generate Schedule</button>
+                    </div>
+
+                    <!-- ADD MATCH -->
+                    <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                        <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Add New Match</h3>
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <input type="date" id="add_date" class="admin-input">
+                            <input type="text" id="add_time" class="admin-input" placeholder="Time (e.g. 16:00)">
+                            <input type="text" id="add_format" class="admin-input col-span-2" placeholder="Format (e.g. BO3)">
+                            <input type="text" id="add_t1_name" class="admin-input" placeholder="Team 1 Name">
+                            <input type="number" id="add_t1_score" class="admin-input" placeholder="Team 1 Score">
+                            <input type="text" id="add_t2_name" class="admin-input" placeholder="Team 2 Name">
+                            <input type="number" id="add_t2_score" class="admin-input" placeholder="Team 2 Score">
+                            <input type="text" id="add_vod" class="admin-input col-span-2" placeholder="VOD Link (Optional)">
+                        </div>
+                        <button onclick="handleAction('add')" class="w-full bg-[#10b981] hover:bg-[#059669] text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">Add Match to Schedule</button>
+                    </div>
+
+                    <div class="flex flex-col gap-6">
+                        <!-- EXPANDED EDIT MATCH -->
+                        <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                            <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Edit Existing Match</h3>
+                            
+                            <!-- Search Target -->
+                            <input type="text" id="edit_target" class="admin-input mb-3 focus:border-[#3b82f6]" placeholder="Target Match Time to Edit (e.g. 14:15)">
+                            
+                            <!-- New Data Fields -->
+                            <div class="grid grid-cols-2 gap-3 mb-4">
+                                <input type="date" id="edit_date" class="admin-input">
+                                <input type="text" id="edit_time" class="admin-input" placeholder="New Time">
+                                <input type="text" id="edit_format" class="admin-input col-span-2" placeholder="New Format">
+                                <input type="text" id="edit_t1_name" class="admin-input" placeholder="New Team 1 Name">
+                                <input type="number" id="edit_t1_score" class="admin-input" placeholder="New Team 1 Score">
+                                <input type="text" id="edit_t2_name" class="admin-input" placeholder="New Team 2 Name">
+                                <input type="number" id="edit_t2_score" class="admin-input" placeholder="New Team 2 Score">
+                                <input type="text" id="edit_vod" class="admin-input col-span-2" placeholder="New VOD Link">
+                            </div>
+                            
+                            <button onclick="handleAction('edit')" class="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white px-4 py-2.5 rounded-lg text-sm font-medium transition">Update Match</button>
+                        </div>
+
+                        <!-- DELETE MATCH -->
+                        <div class="bg-[#0b0c10] p-4 md:p-6 rounded-xl border border-[#1f232b]">
+                            <h3 class="text-[#717686] text-xs uppercase tracking-widest font-semibold mb-4">Delete Match</h3>
+                            <div class="flex gap-3">
+                                <input type="text" id="del_target" class="admin-input w-2/3 focus:border-[#ef4444]" placeholder="Match Time to Delete (e.g. 11:25)">
+                                <button onclick="handleAction('delete')" class="w-1/3 bg-[#ef4444] hover:bg-[#dc2626] text-white rounded-lg text-sm font-medium transition">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <script>
+        const apiUrl = window.location.origin;
+        let currentUserRole = 'user'; // Global variable to track role
+
+        // COUNTDOWN TIMER LOGIC
+        function getValidResetDate() {
+            const storedDate = localStorage.getItem('imc_reset_date');
+            if (storedDate) {
+                const parsedDate = new Date(storedDate);
+                if (!isNaN(parsedDate.getTime()) && parsedDate > new Date()) return parsedDate;
+            }
+            const newDate = new Date();
+            newDate.setMonth(newDate.getMonth() + 1);
+            localStorage.setItem('imc_reset_date', newDate.toISOString());
+            return newDate;
+        }
+
+        let resetDate = getValidResetDate();
+
+        function updateLeaderboardCountdown() {
+            const now = new Date();
+            let timeDifference = resetDate - now;
+
+            const countdownElement = document.getElementById('leaderboard-countdown');
+            if (!countdownElement) return;
+
+            if (timeDifference <= 0) {
+                resetDate = new Date();
+                resetDate.setMonth(resetDate.getMonth() + 1);
+                localStorage.setItem('imc_reset_date', resetDate.toISOString());
+                timeDifference = resetDate - now; 
+            }
+
+            const days = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((timeDifference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((timeDifference % (1000 * 60)) / 1000);
+
+            const pad = (num) => String(num).padStart(2, '0');
+            countdownElement.innerText = `${pad(days)} : ${pad(hours)} : ${pad(minutes)} : ${pad(seconds)}`;
+        }
+
+        updateLeaderboardCountdown();
+        setInterval(updateLeaderboardCountdown, 1000);
+
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "show " + type;
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        async function checkSession() {
+            try {
+                let res = await fetch(`${apiUrl}/api/session`);
+                let data = await res.json();
+                
+                if (data.logged_in) {
+                    currentUserRole = data.role; // Save the role
+                    
+                    document.getElementById('profile-name').innerText = data.username || "User"; 
+                    document.getElementById('profile-role').innerText = data.role === 'user' ? 'Standard User' : data.role;
+                    if (data.avatar) {
+                        document.getElementById('profile-avatar').src = `/uploads/${data.avatar}?t=${new Date().getTime()}`;
+                    }
+
+                    // --- SHOW SCRIM CHECK-IN TAB ONLY FOR PLAYERS ---
+                    if (data.role === 'player') {
+                        document.getElementById('nav-checkin').style.display = 'flex';
+                    } else {
+                        document.getElementById('nav-checkin').style.display = 'none';
+                    }
+                    
+                    if (['superuser', 'admin', 'organizer'].includes(data.role)) {
+                        document.getElementById('nav-organizer').style.display = 'flex';
+                        document.getElementById('admin-panel').style.display = 'block';
+                    }
+                    if (['superuser', 'admin'].includes(data.role)) {
+                        document.getElementById('nav-roles').style.display = 'flex';
+                    }
+                    
+                    loadScrims();
+                    
+                } else {
+                    window.location.href = '/';
+                }
+            } catch (e) {
+                console.log("Backend offline or session check failed.");
+            }
+        }
+
+        async function submitLogout() {
+            try {
+                await fetch(`${apiUrl}/api/logout`, { method: "POST" });
+                window.location.href = '/'; 
+            } catch(e) { showToast("Connection failed", "error"); }
+        }
+
+        // AUTO-FILL EDIT FORM FROM SCHEDULE
+        function fillEditForm(encodedMatchData) {
+            try {
+                let match = JSON.parse(decodeURIComponent(encodedMatchData));
+                
+                document.getElementById('edit_target').value = match.time || '';
+                
+                document.getElementById('edit_date').value = match.date || '';
+                document.getElementById('edit_time').value = match.time || '';
+                document.getElementById('edit_format').value = match.format || '';
+                document.getElementById('edit_t1_name').value = match.t1_name || '';
+                document.getElementById('edit_t1_score').value = match.t1_score || 0;
+                document.getElementById('edit_t2_name').value = match.t2_name || '';
+                document.getElementById('edit_t2_score').value = match.t2_score || 0;
+                document.getElementById('edit_vod').value = match.vod || '';
+
+                document.getElementById('admin-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                document.getElementById('edit_target').focus();
+                
+                showToast("Ready to edit!", "success");
+            } catch (e) {
+                console.error("Failed to map match data:", e);
+                showToast("Failed to load match data.", "error");
+            }
+        }
+
+        // DATABASE LOADER FUNCTION 
+        async function loadScrims() {
+            try {
+                let res = await fetch(`${apiUrl}/api/get_scrims`);
+                let matches = await res.json();
+                
+                const container = document.getElementById('scrims-container');
+                container.innerHTML = ''; 
+
+                if (matches.length === 0) {
+                    container.innerHTML = '<div class="p-8 text-center text-[#717686]">No upcoming scrims scheduled.</div>';
+                    return;
+                }
+                
+                let isAdmin = ['superuser', 'admin', 'organizer'].includes(currentUserRole);
+
+                matches.forEach(match => {
+                    let t1_class = match.t1_score > match.t2_score ? 'score-win' : (match.t1_score < match.t2_score ? 'score-loss text-[#ef4444] bg-transparent' : 'bg-[#1a1d27] text-white');
+                    let t2_class = match.t2_score > match.t1_score ? 'score-win' : (match.t2_score < match.t1_score ? 'score-loss text-[#ef4444] bg-transparent' : 'bg-[#1a1d27] text-white');
+                    
+                    let t1_initial = match.t1_name.substring(0, 2).toUpperCase();
+                    let t2_initial = match.t2_name.substring(0, 2).toUpperCase();
+
+                    let matchJson = encodeURIComponent(JSON.stringify(match));
+
+                    let adminControlsHtml = isAdmin ? `
+                        <button onclick="fillEditForm('${matchJson}')" class="bg-[#3b82f6]/10 text-[#3b82f6] hover:bg-[#3b82f6] hover:text-white px-3 py-1.5 rounded flex items-center gap-1.5 transition text-xs border border-[#3b82f6]/30 font-medium ml-2" title="Edit this match">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                            Edit
+                        </button>
+                    ` : '';
+
+                    const rowHtml = `
+                    <div class="match-row p-4 md:px-8 flex items-center justify-between text-sm relative">
+                        <div class="text-[#717686] w-28 font-mono text-xs flex flex-col gap-1">
+                            <span class="text-[#8892b0]">${match.date || 'No Date'}</span>
+                            <span>${match.time}</span>
+                        </div>
+                        <div class="bg-[#1a1d27] text-[11px] font-bold tracking-wide px-3 py-1 rounded text-[#c5c6c7] mr-auto">${match.format || 'N/A'}</div>
+                        
+                        <div class="flex-1 flex items-center justify-center gap-6 md:absolute md:left-1/2 md:-translate-x-1/2 w-max">
+                            <div class="flex items-center gap-3 w-32 justify-end">
+                                <span class="font-bold text-white text-sm truncate">${match.t1_name}</span>
+                                <div class="w-8 h-8 rounded-full bg-[#1a1d27] border border-[#2a2f3a] flex items-center justify-center text-xs font-bold text-[#e2e8f0] shrink-0">${t1_initial}</div>
+                            </div>
+                            
+                            <div class="score-container shrink-0">
+                                <div class="score-box ${t1_class}">${match.t1_score}</div>
+                                <span class="text-[#717686] text-[10px] font-bold uppercase mx-1">VS</span>
+                                <div class="score-box ${t2_class}">${match.t2_score}</div>
+                            </div>
+
+                            <div class="flex items-center gap-3 w-32 justify-start">
+                                <div class="w-8 h-8 rounded-full bg-[#1a1d27] border border-[#2a2f3a] flex items-center justify-center text-xs font-bold text-[#e2e8f0] shrink-0">${t2_initial}</div>
+                                <span class="font-bold text-white text-sm truncate">${match.t2_name}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center md:ml-auto">
+                            ${match.vod ? `
+                            <a href="${match.vod}" target="_blank" class="bg-[#1a1d27] hover:bg-[#2a2f3a] text-[#e2e8f0] px-4 py-1.5 rounded flex items-center gap-2 transition text-xs border border-[#2a2f3a] font-medium" style="text-decoration:none;">
+                                VOD <svg class="w-3.5 h-3.5 opacity-80" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </a>` : ''}
+                            
+                            ${adminControlsHtml}
+                        </div>
+                    </div>`;
+                    
+                    container.innerHTML += rowHtml;
+                });
+            } catch (e) {
+                console.error("Failed to load scrims data:", e);
+            }
+        }
+
+        // RANDOM MATCH GENERATOR LOGIC
+        async function generateRandomMatches() {
+            const teamsInput = document.getElementById('auto_teams').value;
+            let teams = teamsInput.split(',').map(t => t.trim()).filter(t => t);
+
+            if (teams.length < 2) {
+                showToast("Need at least 2 teams to generate a match.", "error");
+                return;
+            }
+
+            for (let i = teams.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [teams[i], teams[j]] = [teams[j], teams[i]];
+            }
+
+            const today = new Date();
+            const nextMonday = new Date(today);
+            nextMonday.setDate(today.getDate() + ((1 + 7 - today.getDay()) % 7 || 7));
+            const nextTuesday = new Date(nextMonday);
+            nextTuesday.setDate(nextMonday.getDate() + 1);
+
+            const monStr = nextMonday.toISOString().split('T')[0];
+            const tueStr = nextTuesday.toISOString().split('T')[0];
+
+            let matches = [];
+            for (let i = 0; i < teams.length - 1; i += 2) {
+                const isMonday = (i / 2) % 2 === 0;
+                matches.push({
+                    date: isMonday ? monStr : tueStr,
+                    time: "18:00",
+                    format: "BO3", 
+                    t1_name: teams[i],
+                    t1_score: 0,
+                    t2_name: teams[i+1],
+                    t2_score: 0,
+                    vod: ""
+                });
+            }
+
+            let successCount = 0;
+            for (const match of matches) {
+                try {
+                    let res = await fetch(`${apiUrl}/api/add_scrim`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(match)
+                    });
+                    if (res.ok) successCount++;
+                } catch(e) {
+                    console.error("Failed to push generated match to server:", e);
+                }
+            }
+
+            showToast(`Successfully paired and scheduled ${successCount} matches!`, "success");
+            document.getElementById('auto_teams').value = '';
+            setTimeout(loadScrims, 500); 
+        }
+
+        // BACKEND ACTION HANDLER 
+        async function handleAction(actionType) {
+            let endpoint = '';
+            let payload = {};
+
+            if (actionType === 'add') {
+                endpoint = '/api/add_scrim';
+                payload = {
+                    date: document.getElementById('add_date').value,
+                    time: document.getElementById('add_time').value,
+                    format: document.getElementById('add_format').value,
+                    t1_name: document.getElementById('add_t1_name').value,
+                    t1_score: document.getElementById('add_t1_score').value,
+                    t2_name: document.getElementById('add_t2_name').value,
+                    t2_score: document.getElementById('add_t2_score').value,
+                    vod: document.getElementById('add_vod').value
+                };
+            } else if (actionType === 'edit') {
+                endpoint = '/api/edit_scrim';
+                payload = {
+                    target_time: document.getElementById('edit_target').value,
+                    date: document.getElementById('edit_date').value,
+                    time: document.getElementById('edit_time').value,
+                    format: document.getElementById('edit_format').value,
+                    t1_name: document.getElementById('edit_t1_name').value,
+                    t1_score: document.getElementById('edit_t1_score').value,
+                    t2_name: document.getElementById('edit_t2_name').value,
+                    t2_score: document.getElementById('edit_t2_score').value,
+                    vod: document.getElementById('edit_vod').value
+                };
+            } else if (actionType === 'delete') {
+                const delVal = document.getElementById('del_target').value.trim();
+                if (!delVal) {
+                    showToast("Please enter a time in the Delete box first!", "error");
+                    return;
+                }
+                
+                endpoint = '/api/delete_scrim';
+                payload = {
+                    target_time: delVal
+                };
+            }
+
+            try {
+                let res = await fetch(`${apiUrl}${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                let data = await res.json();
+                
+                if (res.ok) {
+                    showToast(data.message || `Match successfully updated!`, "success");
+                    
+                    if(actionType === 'add') {
+                        ['add_date','add_time','add_format','add_t1_name','add_t1_score','add_t2_name','add_t2_score','add_vod'].forEach(id => document.getElementById(id).value = '');
+                    } else if (actionType === 'edit') { 
+                        ['edit_target','edit_date','edit_time','edit_format','edit_t1_name','edit_t1_score','edit_t2_name','edit_t2_score','edit_vod'].forEach(id => document.getElementById(id).value = '');
+                    } else { 
+                        document.getElementById('del_target').value = ''; 
+                    }
+
+                    loadScrims();
+                } else {
+                    showToast(data.error || "Backend error occurred.", "error");
+                }
+            } catch (e) {
+                showToast("Failed to connect to the server.", "error");
+                console.error("Fetch Error:", e);
+            }
+        }
+
+        checkSession();
+    </script>
+</body>
+</html>

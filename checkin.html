@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrim Check-In | IMC Esports</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #0b0c10; color: #e2e8f0; overflow-x: hidden; }
+        
+        .hero-banner { background: linear-gradient(90deg, #14171d 30%, transparent 100%), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80') center/cover; border-bottom: 1px solid #1f232b; }
+
+        .auth-input { width: 100%; background: #0b0c10; color: #fff; padding: 12px 16px; border: 1px solid #1f232b; margin-bottom: 16px; font-size: 14px; outline: none; transition: 0.2s; border-radius: 8px; cursor: pointer; }
+        .auth-input:focus { border-color: #ff6b35; box-shadow: 0 0 0 1px #ff6b35; }
+        
+        .auth-btn { width: 100%; background: #ff6b35; color: white; padding: 12px; border-radius: 8px; font-weight: 600; font-size: 14px; transition: 0.2s; cursor: pointer;}
+        .auth-btn:hover { background: #e85a25; }
+
+        .tab-btn { flex: 1; text-align: center; padding: 12px; font-size: 14px; font-weight: 500; color: #717686; border-bottom: 2px solid transparent; cursor: pointer; transition: 0.2s; }
+        .tab-btn.active { color: #ff6b35; border-bottom-color: #ff6b35; background: rgba(255,107,53,0.05); }
+        .tab-btn:hover:not(.active) { color: #fff; background: rgba(255,255,255,0.02); }
+
+        .hidden-view { display: none !important; }
+
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 8px; padding: 12px; position: fixed; z-index: 9999; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); transition: visibility 0s, opacity 0.3s linear; opacity: 0; }
+        #toast.show { visibility: visible; opacity: 1; }
+        #toast.error { background-color: #ef4444; }
+        #toast.success { background-color: #10b981; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <div id="toast"></div>
+
+    <!-- Top Navigation -->
+    <div class="w-full h-14 border-b border-[#1f232b] flex items-center justify-between px-6 bg-[#0b0c10]/80 backdrop-blur sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <a href="/" class="text-[#717686] hover:text-white transition flex items-center gap-2 text-sm font-medium">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Dashboard
+            </a>
+        </div>
+        <div class="text-[#717686] text-xs font-mono border border-[#1f232b] px-2 py-1 rounded bg-[#14171d]">
+            Live Server
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="hero-banner p-8 md:p-12 flex items-center justify-center relative overflow-hidden">
+        <div class="relative z-10 text-center">
+            <div class="inline-block p-3 bg-[#1f232b] rounded-full mb-4 border border-[#2a2f3a] shadow-lg">
+                <svg class="w-8 h-8 text-[#ff6b35]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h1 class="text-3xl font-bold text-white tracking-wide">IMC Esports Club</h1>
+            <p class="text-[#8892b0] text-sm mt-2 max-w-lg mx-auto">Official Scrim Check-In Portal. Teams must check in their roster 15 minutes prior to the scheduled match block.</p>
+        </div>
+    </div>
+
+    <!-- Check-In Module -->
+    <div class="flex-1 flex justify-center items-start pt-10 px-4 pb-20" id="main-checkin-container">
+        <div class="bg-[#14171d] border border-[#1f232b] rounded-xl w-full max-w-lg shadow-2xl overflow-hidden p-6 md:p-8">
+            
+            <!-- Tabs -->
+            <div class="flex border-b border-[#1f232b] -mx-6 md:-mx-8 -mt-6 md:-mt-8 mb-6 md:mb-8">
+                <button id="tab-team" class="tab-btn active" onclick="switchCheckIn('team')">Team Check-In</button>
+                <button id="tab-player" class="tab-btn" onclick="switchCheckIn('player')">Player Check-In</button>
+            </div>
+
+            <!-- Team Form -->
+            <form id="form-team" onsubmit="event.preventDefault(); submitCheckIn('team');">
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Registered Team Name</label>
+                    <input type="text" id="ci_team_name" class="auth-input cursor-text" placeholder="e.g., IMU Esports" required>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Captain IGN</label>
+                    <input type="text" id="ci_captain" class="auth-input cursor-text" placeholder="In-Game Name" required>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Match Block</label>
+                    <select id="ci_team_time" class="auth-input" required>
+                        <option value="" disabled selected>Select a time slot...</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="auth-btn flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Confirm Team Check-In
+                </button>
+            </form>
+
+            <!-- Player Form -->
+            <form id="form-player" class="hidden-view" onsubmit="event.preventDefault(); submitCheckIn('player');">
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Player IGN</label>
+                    <input type="text" id="ci_player_ign" class="auth-input cursor-text" placeholder="Exact In-Game Name" required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Affiliated Team</label>
+                    <input type="text" id="ci_player_team" class="auth-input cursor-text" placeholder="Your Team Name" required>
+                </div>
+
+                <!-- ADDED: Match Block Dropdown for Players -->
+                <div class="mb-4">
+                    <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Match Block</label>
+                    <select id="ci_player_time" class="auth-input" required>
+                        <option value="" disabled selected>Select a time slot...</option>
+                    </select>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-xs font-semibold text-[#717686] uppercase tracking-wider mb-2">Primary Role</label>
+                    <select id="ci_player_role" class="auth-input" required>
+                        <option value="" disabled selected>Select primary role...</option>
+                        <option value="Jungler">Jungler</option>
+                        <option value="Mid Lane">Mid Lane</option>
+                        <option value="Gold Lane">Gold Lane</option>
+                        <option value="EXP Lane">EXP Lane</option>
+                        <option value="Roamer">Roamer</option>
+                        <option value="Substitute">Substitute</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="auth-btn flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Confirm Player Check-In
+                </button>
+            </form>
+
+            <!-- Admin Time Management Panel -->
+            <div id="admin-time-manager" class="hidden-view mt-6 pt-6 border-t border-[#1f232b]">
+                <h3 class="text-white text-sm font-bold mb-4 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-[#ff6b35]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                    Manage Check-In Times (Admin Only)
+                </h3>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="new_time_slot" class="auth-input !mb-0 cursor-text" placeholder="e.g. 21:00 (9:00 PM) Slot">
+                    <button onclick="addTimeSlot()" class="bg-[#10b981] hover:bg-[#059669] text-white px-4 py-2 rounded-lg font-bold text-sm transition">Add</button>
+                </div>
+                <div id="admin-time-list" class="space-y-2">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+
+            <!-- Export Data Buttons -->
+            <div class="mt-6 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6 pt-6 border-t border-[#1f232b]">
+                <a href="/api/export_teams" class="text-[#717686] hover:text-[#ff6b35] text-xs underline decoration-[#1f232b] hover:decoration-[#ff6b35] underline-offset-4 transition">
+                    <svg class="w-4 h-4 inline-block mr-1 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Team Data (Admins)
+                </a>
+                <span class="text-[#1f232b] hidden md:inline">|</span>
+                <a href="/api/export_players" class="text-[#717686] hover:text-[#ff6b35] text-xs underline decoration-[#1f232b] hover:decoration-[#ff6b35] underline-offset-4 transition">
+                    <svg class="w-4 h-4 inline-block mr-1 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download Player Data (Admins)
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = window.location.origin;
+
+        function showToast(message, type = "success") {
+            const toast = document.getElementById("toast");
+            toast.innerText = message;
+            toast.className = "show " + type;
+            setTimeout(() => { toast.className = toast.className.replace("show", ""); }, 3000);
+        }
+
+        // Fetch and populate times into BOTH standard <select> dropdowns
+        async function fetchCheckinTimes() {
+            try {
+                let res = await fetch(`${apiUrl}/api/checkin_times`);
+                let data = await res.json();
+                
+                if (data.status === 'success') {
+                    const timeSelect = document.getElementById('ci_team_time');
+                    const playerTimeSelect = document.getElementById('ci_player_time');
+                    const adminList = document.getElementById('admin-time-list');
+                    
+                    timeSelect.innerHTML = '<option value="" disabled selected>Select a time slot...</option>';
+                    playerTimeSelect.innerHTML = '<option value="" disabled selected>Select a time slot...</option>';
+                    adminList.innerHTML = '';
+                    
+                    data.data.forEach(time => {
+                        // Populate Team and Player Dropdown Options
+                        timeSelect.innerHTML += `<option value="${time}">${time}</option>`;
+                        playerTimeSelect.innerHTML += `<option value="${time}">${time}</option>`;
+                        
+                        // Populate Admin Deletion List
+                        adminList.innerHTML += `
+                            <div class="flex justify-between items-center bg-[#1a1d27] p-2 rounded border border-[#2a2f3a]">
+                                <span class="text-[#c5c6c7] text-xs">${time}</span>
+                                <button onclick="deleteTimeSlot('${time}')" class="text-[#ef4444] hover:text-white text-xs font-bold px-2">Delete</button>
+                            </div>`;
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to fetch times", e);
+            }
+        }
+
+        // Admin Add Time Slot
+        async function addTimeSlot() {
+            const timeInput = document.getElementById('new_time_slot');
+            if (!timeInput.value.trim()) return showToast("Time slot cannot be empty", "error");
+
+            try {
+                let res = await fetch(`${apiUrl}/api/checkin_times`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ time_slot: timeInput.value })
+                });
+                let result = await res.json();
+                if (result.status === 'success') {
+                    showToast(result.message, 'success');
+                    timeInput.value = '';
+                    fetchCheckinTimes(); // Reload the dropdown lists
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (e) { showToast("Server error.", "error"); }
+        }
+
+        // Admin Delete Time Slot
+        async function deleteTimeSlot(timeSlot) {
+            if (!confirm(`Are you sure you want to remove "${timeSlot}"?`)) return;
+            try {
+                let res = await fetch(`${apiUrl}/api/checkin_times`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ time_slot: timeSlot })
+                });
+                let result = await res.json();
+                if (result.status === 'success') {
+                    showToast(result.message, 'success');
+                    fetchCheckinTimes(); // Reload the dropdown lists
+                } else {
+                    showToast(result.message, 'error');
+                }
+            } catch (e) { showToast("Server error.", "error"); }
+        }
+
+        // --- SESSION AND ROLE CHECKER ---
+        async function checkSession() {
+            try {
+                let res = await fetch(`${apiUrl}/api/session`);
+                let data = await res.json();
+                
+                // If user is not logged in or lacks the player/admin role, reject access
+                if (!data.logged_in || !['player', 'superuser', 'admin', 'organizer'].includes(data.role)) {
+                    document.getElementById('main-checkin-container').style.display = 'none'; 
+                    showToast("Access Restricted: Only verified Players can access this portal.", "error");
+                    setTimeout(() => window.location.href = '/', 2000);
+                    return;
+                }
+
+                // Show admin time manager if user has privileges
+                if (['superuser', 'admin', 'organizer'].includes(data.role)) {
+                    document.getElementById('admin-time-manager').classList.remove('hidden-view');
+                }
+
+                // Fetch dynamic times on load
+                fetchCheckinTimes();
+
+            } catch (e) {
+                window.location.href = '/';
+            }
+        }
+
+        function switchCheckIn(type) {
+            document.getElementById('tab-team').classList.remove('active');
+            document.getElementById('tab-player').classList.remove('active');
+            document.getElementById('form-team').classList.add('hidden-view');
+            document.getElementById('form-player').classList.add('hidden-view');
+
+            document.getElementById(`tab-${type}`).classList.add('active');
+            document.getElementById(`form-${type}`).classList.remove('hidden-view');
+        }
+
+        async function submitCheckIn(type) {
+            const btn = document.querySelector(`#form-${type} button[type="submit"]`);
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = `<svg class="animate-spin h-5 w-5 text-white inline mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
+            btn.style.pointerEvents = 'none';
+
+            let payload = {};
+            if (type === 'team') {
+                payload = {
+                    type: 'Team',
+                    name: document.getElementById('ci_team_name').value,
+                    associated_info: document.getElementById('ci_captain').value,
+                    role_or_time: document.getElementById('ci_team_time').value 
+                };
+            } else {
+                const role = document.getElementById('ci_player_role').value;
+                const time = document.getElementById('ci_player_time').value;
+                payload = {
+                    type: 'Player',
+                    name: document.getElementById('ci_player_ign').value,
+                    associated_info: document.getElementById('ci_player_team').value,
+                    role_or_time: `${role} - ${time}` // Combines Role and Time Slot automatically
+                };
+            }
+
+            try {
+                let response = await fetch('/api/checkin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                let result = await response.json();
+                
+                if (response.ok && result.status === 'success') {
+                    showToast(result.message, 'success');
+                    document.getElementById(`form-${type}`).reset();
+                } else {
+                    showToast(result.message || 'Failed to check in.', 'error');
+                }
+            } catch (error) {
+                showToast('Server error. Ensure the backend is running.', 'error');
+                console.error(error);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.style.pointerEvents = 'auto';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', checkSession);
+    </script>
+</body>
+</html>
